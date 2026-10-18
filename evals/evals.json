@@ -20,6 +20,12 @@
       "prompt": "使用 $stoneart-product-manager 更新产品 7844，把封面换掉并补充一张侧面细节图。先读取当前产品、备份并显示字段和图片 diff，不要直接 apply。",
       "expected_output": "The current product is fetched, only intended fields are proposed, image order is explicit, and the command remains a dry-run until approval.",
       "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "使用 $stoneart-product-manager，先给这张雕塑产品图加一个艺术丝带风格的半透明彩色品牌水印，位置随机，但不要盖住头部；只生成预览，不要上传或修改原图。",
+      "expected_output": "A watermarked preview is generated under work/processed/watermarked or the requested output directory, the source file remains unchanged, the position avoids the face, and no API upload or product write occurs.",
+      "files": []
     }
   ]
 }

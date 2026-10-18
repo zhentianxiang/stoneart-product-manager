@@ -1,6 +1,6 @@
 ---
 name: stoneart-product-manager
-description: End-to-end creation and publishing of Stone Art Sculpture products from a product image or reference photo. Use this skill whenever the user sends a sculpture, statue, fountain, planter, bench, fireplace, gazebo, bust, relief, or other product image and asks to identify it, write its product page, create a draft, add it to the company website, upload its gallery images, set its category, optimize it for Google SEO, update an existing product, or 上架/发布/新建公司产品. Also use it for near-miss requests such as “把这个图片放到产品里”, “根据图片写一个产品”, “上架这个雕塑”, or when the user wants ready-to-copy product-listing prompts, even if they do not name this skill.
+description: End-to-end creation and publishing of Stone Art Sculpture products from a product image or reference photo. Use this skill whenever the user sends a sculpture, statue, fountain, planter, bench, fireplace, gazebo, bust, relief, or other product image and asks to identify it, write its product page, create a draft, add it to the company website, upload its gallery images, set its category, optimize it for Google SEO, add or configure product-image watermarks, update an existing product, or 上架/发布/新建公司产品. Also use it for near-miss requests such as “把这个图片放到产品里”, “根据图片写一个产品”, “上架这个雕塑”, “给产品图片加水印”, or when the user wants ready-to-copy product-listing prompts, even if they do not name this skill.
 compatibility: Requires Python 3.10+, network access, requests, Pillow, and dashscope. Uses Aliyun Wan2.7 for AI product covers and DeepSeek for fallback vision and structured draft generation.
 ---
 
@@ -40,6 +40,20 @@ PRODUCT_IMAGE_JPEG_QUALITY=90
 ```
 
 Wan2.7 is used for the selected product cover. DeepSeek is not used for background replacement.
+
+Product watermark configuration:
+
+```dotenv
+PRODUCT_WATERMARK_ENABLED=true
+PRODUCT_WATERMARK_TEXT=Stone Art Sculpture
+PRODUCT_WATERMARK_POSITION=random
+PRODUCT_WATERMARK_COLORS=#f2b45b,#e06c75,#8f8dff,#5cc9c0
+PRODUCT_WATERMARK_OPACITY=0.50
+PRODUCT_WATERMARK_WIDTH_RATIO=0.42
+PRODUCT_WATERMARK_FONT_PATH=assets/fonts/GreatVibes-Regular.ttf
+```
+
+The bundled Great Vibes font is distributed under the SIL Open Font License. The watermark is drawn after AI cover generation and before upload, so the AI prompt does not need to create or preserve any overlay text.
 
 ## When the User Asks How to Use the Skill
 
@@ -225,7 +239,9 @@ Before upload, the CLI:
 3. Removes watermarks/overlay text and replaces the full background using `PRODUCT_COVER_AI_PROMPT`.
 4. Restores the generated image to the source dimensions.
 5. Compresses the generated image if needed.
-6. Uploads the AI cover first, followed by the remaining original images.
+6. Adds the configured watermark to every final upload image when enabled.
+7. Recompresses a watermarked image if it exceeds the upload limit.
+8. Uploads the AI cover first, followed by the remaining original images.
 
 For four supplied images, the final gallery has four images:
 
@@ -239,6 +255,22 @@ For four supplied images, the final gallery has four images:
 The original hero is not added as a fifth item. Inspect the generated cover with `view_image` before saving. Reject it if the sculpture changes shape, gains or loses major details, contains added people/text/logos, or looks physically implausible.
 
 Use `--no-ai-cover` only when the user explicitly wants to skip Wan2.7.
+
+### 6.1 Watermark final upload images
+
+Use `--watermark` when the user asks for a brand watermark on the final images. When `PRODUCT_WATERMARK_ENABLED=true`, watermarking is automatic; use `--no-watermark` for a one-off exception.
+
+The bundled script uses a transparent multicolor gradient, a subtle shadow, a random rotation, and a random quiet edge position. Portrait images choose only from the top-left or top-right edge zones so the mark remains inside the product page's top-cropped `4 / 3` gallery frame. It writes new files under `work/processed/watermarked/` and never modifies the source photos.
+
+Preview the look before a production upload:
+
+```bash
+python scripts/add_watermark.py \
+  --image work/<slug>/images/product-01.jpg \
+  --output-dir work/<slug>/images/watermarked
+```
+
+Inspect the preview with `view_image`. Adjust `PRODUCT_WATERMARK_TEXT`, `PRODUCT_WATERMARK_OPACITY`, `PRODUCT_WATERMARK_WIDTH_RATIO`, `PRODUCT_WATERMARK_COLORS`, or `PRODUCT_WATERMARK_POSITION` if the text obscures the sculpture, becomes hard to read, or is clipped by the gallery crop. Keep the watermark away from faces and carved details; use the top corners on full-height statues.
 
 Standalone image tools:
 
@@ -311,6 +343,9 @@ Publication validation requires a title, slug, enabled category, and cover image
 - Keep the other supplied images in the gallery in their reviewed order.
 - Use final gallery images in the body with `{{product_image:N}}` placeholders when they clarify a detail.
 - Warn the user before publishing a visibly watermarked non-cover image.
+- Apply the configured watermark only to final upload copies, never to the user's original files.
+- Keep the mark translucent and low-impact; it must not obscure the sculpture's face, hands, or defining ornament.
+- Use the bundled `assets/fonts/GreatVibes-Regular.ttf` or another font with a redistributable license.
 - Do not infer exact scale from a photo without a reference object. Convert visual guesses into customization language, not fake measurements.
 - Statue nudity can be legitimate classical art; still report explicit or unrelated sensitive content.
 
@@ -322,6 +357,7 @@ Publication validation requires a title, slug, enabled category, and cover image
 - Downscale only when size-only compression cannot reach the limit.
 - Write compressed copies under `work/processed/` and never overwrite the user's source files.
 - The AI-generated cover is also compressed when necessary.
+- Watermarked copies are written under `work/processed/watermarked/` and compressed again only when needed.
 
 ## Category Selection
 

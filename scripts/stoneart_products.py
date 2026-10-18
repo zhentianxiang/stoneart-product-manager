@@ -65,6 +65,58 @@ PRIVATE_FIELDS = {
 }
 
 
+def watermark_enabled(
+    config: dict[str, str],
+    *,
+    requested: bool = False,
+    disabled: bool = False,
+) -> bool:
+    if disabled:
+        return False
+    if requested:
+        return True
+    return str(config.get("PRODUCT_WATERMARK_ENABLED", "false")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def watermark_options(config: dict[str, str]) -> dict[str, Any]:
+    font_value = config.get(
+        "PRODUCT_WATERMARK_FONT_PATH",
+        "assets/fonts/GreatVibes-Regular.ttf",
+    ).strip()
+    font_path = Path(font_value).expanduser()
+    if not font_path.is_absolute():
+        font_path = SKILL_DIR / font_path
+    return {
+        "text": config.get("PRODUCT_WATERMARK_TEXT", "Stone Art Sculpture"),
+        "subtitle": config.get("PRODUCT_WATERMARK_SUBTITLE", ""),
+        "font_path": font_path,
+        "colors": config.get(
+            "PRODUCT_WATERMARK_COLORS",
+            "#f2b45b,#e06c75,#8f8dff,#5cc9c0",
+        ),
+        "opacity": float(config.get("PRODUCT_WATERMARK_OPACITY", "0.50")),
+        "width_ratio": float(
+            config.get("PRODUCT_WATERMARK_WIDTH_RATIO", "0.42")
+        ),
+        "position": config.get("PRODUCT_WATERMARK_POSITION", "random"),
+        "seed": config.get("PRODUCT_WATERMARK_SEED", ""),
+        "margin_ratio": float(
+            config.get("PRODUCT_WATERMARK_MARGIN_RATIO", "0.045")
+        ),
+        "rotation_degrees": float(
+            config.get("PRODUCT_WATERMARK_ROTATION_DEGREES", "9")
+        ),
+        "jpeg_quality": int(
+            config.get("PRODUCT_WATERMARK_JPEG_QUALITY", "94")
+        ),
+    }
+
+
 def load_env(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
     if not path.exists():
@@ -475,18 +527,51 @@ def upload_images(
     paths: list[Path],
     alts: list[str],
     fallback_alt: str,
+    *,
+    watermark: bool = False,
+    watermark_options_override: dict[str, Any] | None = None,
+    max_bytes: int = 1 << 20,
+    quality_start: int = 90,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     gallery: list[dict[str, Any]] = []
     asset_info: list[dict[str, Any]] = []
     warnings: list[str] = []
     for index, path in enumerate(paths):
-        info = image_info(path)
-        response = client.upload_media(path)
+        source_path = path
+        watermark_info = None
+        upload_path = path
+        if watermark:
+            from add_watermark import add_watermark
+
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+            watermarked_path = (
+                Path.cwd()
+                / "work"
+                / "processed"
+                / "watermarked"
+                / f"{path.stem}-{digest}-watermarked.jpg"
+            )
+            watermark_info = add_watermark(
+                path,
+                watermarked_path,
+                **(watermark_options_override or {}),
+            )
+            upload_path = Path(watermark_info["output"])
+            if upload_path.stat().st_size > max_bytes:
+                compression = compress_image(
+                    upload_path,
+                    max_bytes=max_bytes,
+                    quality_start=quality_start,
+                )
+                upload_path = Path(compression["path"])
+                watermark_info["compression"] = compression
+        info = image_info(upload_path)
+        response = client.upload_media(upload_path)
         deduplicated = bool(response.get("deduplicated"))
         asset = response.get("asset") if deduplicated else response
         url = str(asset.get("url") or "")
         if not url:
-            raise RuntimeError(f"media upload returned no URL for {path.name}")
+            raise RuntimeError(f"media upload returned no URL for {upload_path.name}")
         alt = alts[index] if index < len(alts) else ""
         if not alt:
             alt = fallback_alt if index == 0 else f"{fallback_alt}, view {index + 1}"
@@ -494,6 +579,8 @@ def upload_images(
         asset_info.append(
             {
                 **info,
+                "source_path": str(source_path.resolve()),
+                "watermark": watermark_info,
                 "media_id": asset.get("id"),
                 "url": url,
                 "deduplicated": deduplicated,
@@ -502,10 +589,10 @@ def upload_images(
         )
         if deduplicated:
             warnings.append(
-                f"{path.name} already existed in the media library; review its references"
+                f"{upload_path.name} already existed in the media library; review its references"
             )
         if info.get("warning"):
-            warnings.append(f"{path.name}: {info['warning']}")
+            warnings.append(f"{upload_path.name}: {info['warning']}")
     return gallery, asset_info, warnings
 
 
@@ -1092,6 +1179,7 @@ def build_create_preview(
     publish: bool,
     cover_index: Any = 1,
     ai_cover: bool = True,
+    watermark: bool = False,
 ) -> dict[str, Any]:
     payload, warnings = merge_defaults(draft, config)
     if publish:
@@ -1138,6 +1226,7 @@ def build_create_preview(
                     "source_index": source_index + 1,
                     "role": role,
                     "path": str(path.resolve()),
+                    "watermark": watermark,
                     "alt": (
                         alt + " in a landscaped outdoor setting"
                         if role == "ai_cover" and "landscape" not in alt.lower()
@@ -1195,6 +1284,12 @@ def build_create_preview(
         }
         if image_paths
         else None,
+        "watermark": {
+            "enabled": watermark and bool(image_paths),
+            "text": config.get("PRODUCT_WATERMARK_TEXT", "Stone Art Sculpture"),
+            "position": config.get("PRODUCT_WATERMARK_POSITION", "random"),
+            "opacity": float(config.get("PRODUCT_WATERMARK_OPACITY", "0.50")),
+        },
         "payload": payload,
         "category_paths": [
             item["_path"]
@@ -1620,6 +1715,17 @@ def parser() -> argparse.ArgumentParser:
         help="Use the original cover image and skip Aliyun background replacement",
     )
     create.add_argument("--publish", action="store_true")
+    create_watermark = create.add_mutually_exclusive_group()
+    create_watermark.add_argument(
+        "--watermark",
+        action="store_true",
+        help="Add the configured artistic watermark to every uploaded image",
+    )
+    create_watermark.add_argument(
+        "--no-watermark",
+        action="store_true",
+        help="Skip watermarking even when PRODUCT_WATERMARK_ENABLED is true",
+    )
     create.add_argument("--apply", action="store_true")
     create.add_argument("--no-notify", action="store_true")
 
@@ -1629,6 +1735,17 @@ def parser() -> argparse.ArgumentParser:
     update.add_argument("--image", action="append", default=[])
     update.add_argument("--alt", action="append", default=[])
     update.add_argument("--replace-gallery", action="store_true")
+    update_watermark = update.add_mutually_exclusive_group()
+    update_watermark.add_argument(
+        "--watermark",
+        action="store_true",
+        help="Add the configured artistic watermark to newly uploaded images",
+    )
+    update_watermark.add_argument(
+        "--no-watermark",
+        action="store_true",
+        help="Skip watermarking even when PRODUCT_WATERMARK_ENABLED is true",
+    )
     update.add_argument("--apply", action="store_true")
     update.add_argument("--no-notify", action="store_true")
 
@@ -1805,6 +1922,11 @@ def main() -> int:
         if args.command == "create-product":
             draft = read_json(Path(args.file).expanduser())
             image_paths = [Path(value).expanduser() for value in args.image]
+            apply_watermark = watermark_enabled(
+                config,
+                requested=args.watermark,
+                disabled=args.no_watermark,
+            )
             preview = build_create_preview(
                 client,
                 config,
@@ -1814,6 +1936,7 @@ def main() -> int:
                 args.publish,
                 cover_index=args.cover_index,
                 ai_cover=not args.no_ai_cover,
+                watermark=apply_watermark,
             )
             if not args.apply:
                 output_json(preview)
@@ -1844,6 +1967,14 @@ def main() -> int:
                 prepared_assets["paths"],
                 prepared_assets["alts"],
                 str(payload["title"]),
+                watermark=apply_watermark,
+                watermark_options_override=watermark_options(config),
+                max_bytes=int(
+                    config.get("PRODUCT_IMAGE_MAX_BYTES", str(1 << 20))
+                ),
+                quality_start=int(
+                    config.get("PRODUCT_IMAGE_JPEG_QUALITY", "90")
+                ),
             )
             payload["images"] = merge_gallery(payload, gallery, replace_gallery=True)
             if gallery and not str(payload.get("cover_image") or "").startswith(("/uploads/", "http")):
@@ -1896,6 +2027,7 @@ def main() -> int:
                     "uploaded_media": uploaded,
                     "prepared_images": prepared_assets["image_info"],
                     "ai_cover": prepared_assets["ai_cover_result"],
+                    "watermark": preview["watermark"],
                     "notification": notification,
                     "product": product_summary(saved),
                 }
@@ -1905,6 +2037,11 @@ def main() -> int:
         if args.command == "update-product":
             current = client.get_product(args.id)
             patch = read_json(Path(args.file).expanduser())
+            apply_watermark = watermark_enabled(
+                config,
+                requested=args.watermark,
+                disabled=args.no_watermark,
+            )
             categories = client.categories()
             merged = {
                 key: current.get(key)
@@ -1923,7 +2060,10 @@ def main() -> int:
             merged["category_ids"] = category_ids
             image_paths = [Path(value).expanduser() for value in args.image]
             merged, default_warnings = merge_defaults(merged, config)
-            pending_info = [image_info(path) for path in image_paths]
+            pending_info = [
+                {**image_info(path), "will_watermark": apply_watermark}
+                for path in image_paths
+            ]
             pending_warnings = [
                 f"{Path(item['path']).name}: {item['warning']}"
                 for item in pending_info
@@ -1995,6 +2135,14 @@ def main() -> int:
                     image_paths,
                     args.alt,
                     str(merged.get("title") or ""),
+                    watermark=apply_watermark,
+                    watermark_options_override=watermark_options(config),
+                    max_bytes=int(
+                        config.get("PRODUCT_IMAGE_MAX_BYTES", str(1 << 20))
+                    ),
+                    quality_start=int(
+                        config.get("PRODUCT_IMAGE_JPEG_QUALITY", "90")
+                    ),
                 )
                 merged["images"] = merge_gallery(
                     merged, gallery, replace_gallery=args.replace_gallery

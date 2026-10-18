@@ -15,6 +15,8 @@ Codex skill for turning sculpture product photos into completed Stone Art Sculpt
 - Keep the AI cover plus all remaining originals in a correctly sized gallery
 - Use uploaded gallery images inside product body content
 - Compress images above 1MB without overwriting the source files
+- Add a translucent multicolor script watermark to final upload images
+- Randomize watermark placement among quiet edge zones
 - Upload cover and gallery images to the CMS media library
 - Preview the exact product payload before writing
 - Create product drafts or publish on explicit request
@@ -69,6 +71,9 @@ python scripts/stoneart_products.py vision --image product.jpg
 python scripts/stoneart_products.py draft-product \
   --observation work/example/observation.json \
   --output work/example/draft.json
+python scripts/add_watermark.py \
+  --image product.jpg \
+  --output-dir work/example/watermarked
 ```
 
 ## Security

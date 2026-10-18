@@ -164,7 +164,16 @@ python scripts/stoneart_products.py update-product \
 python scripts/stoneart_products.py publish-product --id 12345
 python scripts/stoneart_products.py media-references --id 58332
 python scripts/stoneart_products.py next-sku --series SAS-215
+python scripts/add_watermark.py \
+  --image work/example/images/product-01.jpg \
+  --output-dir work/example/images/watermarked
 ```
+
+## Product Image Watermarks
+
+`add_watermark.py` creates a new copy with a translucent multicolor script watermark. It supports `random`, `top-left`, `top-right`, `bottom-left`, `bottom-right`, `middle-left`, and `middle-right` positions. For portrait product photos, `random` selects between the top corners so the mark remains inside the product page's top-cropped gallery frame.
+
+`create-product` and `update-product` accept `--watermark` and `--no-watermark`. When neither is supplied, `PRODUCT_WATERMARK_ENABLED` controls the behavior. The upload pipeline writes watermarked copies under `work/processed/watermarked/`, recompresses them when necessary, and never overwrites source images.
 
 ## Category and SKU Allocation
 
