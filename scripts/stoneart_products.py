@@ -1479,10 +1479,17 @@ def translate_title_zh(config: dict[str, str], title: str) -> str:
         )
     except Exception:
         return ""
-    translated = raw.strip().splitlines()[0].strip()
-    translated = re.sub(r"^(?:中文标题|标题)\s*[：:]\s*", "", translated)
-    translated = translated.strip("\"'“”‘’")
-    return translated if translated and is_chinese_title(translated) else ""
+    translated = raw.strip().strip("`").strip()
+    first_line = next(
+        (line.strip() for line in translated.splitlines() if line.strip()), ""
+    )
+    first_line = re.sub(
+        r"^(?:中文标题|简体中文标题|标题)\s*[：:]\s*", "", first_line
+    )
+    first_line = first_line.strip().strip("\"'“”‘’").strip()
+    if not first_line or first_line == title or not is_chinese_title(first_line):
+        return ""
+    return first_line
 
 
 def feishu_signature(secret: str, timestamp: str) -> str:
