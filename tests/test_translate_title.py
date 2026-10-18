@@ -19,6 +19,16 @@ class TranslateTitleZhTests(unittest.TestCase):
                 "White Marble Virgin Mary Statue",
             )
 
+    def translate_sequence(self, *responses: str) -> str:
+        with patch(
+            "stoneart_products.call_deepseek",
+            side_effect=responses,
+        ):
+            return stoneart_products.translate_title_zh(
+                {},
+                "White Marble Virgin Mary Statue",
+            )
+
     def test_empty_response_returns_empty_string(self):
         self.assertEqual(self.translate(""), "")
 
@@ -36,6 +46,24 @@ class TranslateTitleZhTests(unittest.TestCase):
             self.translate('中文标题：“白色大理石圣母像”'),
             "白色大理石圣母像",
         )
+
+    def test_retries_after_empty_response(self):
+        self.assertEqual(
+            self.translate_sequence("", "白色大理石圣母像"),
+            "白色大理石圣母像",
+        )
+
+    def test_retries_after_incomplete_translation(self):
+        self.assertEqual(
+            self.translate_sequence(
+                "耶稣像",
+                "白色大理石圣母像",
+            ),
+            "白色大理石圣母像",
+        )
+
+    def test_returns_empty_after_all_retries_fail(self):
+        self.assertEqual(self.translate_sequence("", " \n ", "", "", ""), "")
 
 
 if __name__ == "__main__":

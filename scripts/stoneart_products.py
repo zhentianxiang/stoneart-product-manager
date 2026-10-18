@@ -1461,35 +1461,46 @@ def translate_title_zh(config: dict[str, str], title: str) -> str:
     title = title.strip()
     if not title or is_chinese_title(title):
         return title
-    try:
-        raw = call_deepseek(
-            config,
-            [
-                {
-                    "role": "system",
-                    "content": (
-                        "Translate this Stone Art Sculpture product title into natural "
-                        "Simplified Chinese. Return only the translated title."
-                    ),
-                },
-                {"role": "user", "content": title},
-            ],
-            temperature=0.1,
-            max_tokens=180,
+    for _ in range(5):
+        try:
+            raw = call_deepseek(
+                config,
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            "Translate this Stone Art Sculpture product title into "
+                            "natural Simplified Chinese. Return only the translated "
+                            "title. Do not return an empty response."
+                        ),
+                    },
+                    {"role": "user", "content": title},
+                ],
+                temperature=0.1,
+                max_tokens=180,
+            )
+        except Exception:
+            continue
+        translated = raw.strip().strip("`").strip()
+        first_line = next(
+            (line.strip() for line in translated.splitlines() if line.strip()), ""
         )
-    except Exception:
-        return ""
-    translated = raw.strip().strip("`").strip()
-    first_line = next(
-        (line.strip() for line in translated.splitlines() if line.strip()), ""
-    )
-    first_line = re.sub(
-        r"^(?:中文标题|简体中文标题|标题)\s*[：:]\s*", "", first_line
-    )
-    first_line = first_line.strip().strip("\"'“”‘’").strip()
-    if not first_line or first_line == title or not is_chinese_title(first_line):
-        return ""
-    return first_line
+        first_line = re.sub(
+            r"^(?:中文标题|简体中文标题|标题)\s*[：:]\s*", "", first_line
+        )
+        first_line = first_line.strip().strip("\"'“”‘’").strip()
+        chinese_count = sum(
+            "\u4e00" <= char <= "\u9fff" for char in first_line
+        )
+        minimum_chinese = max(4, min(12, len(title.split())))
+        if (
+            first_line
+            and first_line != title
+            and is_chinese_title(first_line)
+            and chinese_count >= minimum_chinese
+        ):
+            return first_line
+    return ""
 
 
 def feishu_signature(secret: str, timestamp: str) -> str:
