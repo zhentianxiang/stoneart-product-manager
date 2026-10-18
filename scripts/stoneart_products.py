@@ -1671,6 +1671,129 @@ def safe_notify_product(
         return {"enabled": True, "ok": False, "error": str(exc)}
 
 
+def knowledge_sync_enabled(config: dict[str, str]) -> bool:
+    return str(config.get("LOCAL_KB_SYNC_ENABLED", "false")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def sync_knowledge_base_products(
+    config: dict[str, str],
+    *,
+    preview: bool = False,
+) -> dict[str, Any]:
+    base = config.get("LOCAL_KB_BASE_URL", "").strip().rstrip("/")
+    origin = config.get("LOCAL_KB_ADMIN_ORIGIN", "").strip().rstrip("/")
+    username = config.get("LOCAL_KB_ADMIN_USERNAME", "").strip()
+    password = config.get("LOCAL_KB_ADMIN_PASSWORD", "")
+    missing = [
+        key
+        for key, value in (
+            ("LOCAL_KB_BASE_URL", base),
+            ("LOCAL_KB_ADMIN_ORIGIN", origin),
+            ("LOCAL_KB_ADMIN_USERNAME", username),
+            ("LOCAL_KB_ADMIN_PASSWORD", password),
+        )
+        if not value
+    ]
+    if missing:
+        raise RuntimeError(f"missing knowledge base config: {', '.join(missing)}")
+
+    verify_value = str(config.get("LOCAL_KB_VERIFY_TLS", "true")).strip().lower()
+    verify: bool | str = verify_value not in {"0", "false", "no", "off"}
+    ca_bundle = config.get("LOCAL_KB_CA_BUNDLE", "").strip()
+    if ca_bundle:
+        verify = ca_bundle
+    timeout = int(config.get("LOCAL_KB_SYNC_TIMEOUT", "300"))
+    headers = {
+        "Origin": origin,
+        "Referer": f"{origin}/",
+        "Accept": "application/json",
+    }
+    session = requests.Session()
+    login = session.post(
+        f"{base}/api/auth/login",
+        json={"username": username, "password": password},
+        headers={**headers, "Content-Type": "application/json"},
+        timeout=30,
+        verify=verify,
+    )
+    login_body = safe_json(login)
+    if login.status_code >= 400:
+        raise ApiError(
+            login.status_code,
+            login_body.get("detail")
+            or login_body.get("error")
+            or "knowledge base login failed",
+            login_body,
+        )
+
+    path = (
+        config.get("LOCAL_KB_PREVIEW_PATH", "/api/imports/stoneart/preview")
+        if preview
+        else config.get("LOCAL_KB_SYNC_PATH", "/api/imports/stoneart/sync")
+    )
+    response = session.request(
+        "GET" if preview else "POST",
+        f"{base}{path}",
+        headers=headers,
+        timeout=timeout,
+        verify=verify,
+    )
+    body = safe_json(response)
+    if response.status_code >= 400:
+        raise ApiError(
+            response.status_code,
+            body.get("detail")
+            or body.get("error")
+            or "knowledge base product sync failed",
+            body,
+        )
+    return {
+        "enabled": True,
+        "ok": True,
+        "mode": "preview" if preview else "sync",
+        "endpoint": path,
+        "response": body,
+    }
+
+
+def safe_sync_knowledge_base(
+    config: dict[str, str],
+    *,
+    product: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if not knowledge_sync_enabled(config):
+        return {
+            "enabled": False,
+            "ok": True,
+            "skipped": "LOCAL_KB_SYNC_ENABLED is false",
+        }
+    if product is not None and product.get("status") != "published":
+        return {
+            "enabled": True,
+            "ok": True,
+            "skipped": "product is not published",
+        }
+    try:
+        return sync_knowledge_base_products(config)
+    except ApiError as exc:
+        result = {
+            "enabled": True,
+            "ok": False,
+            "status": exc.status,
+            "error": str(exc),
+        }
+        if isinstance(exc.payload, dict) and exc.payload.get("license_status"):
+            result["license_status"] = exc.payload["license_status"]
+        return result
+    except Exception as exc:
+        return {"enabled": True, "ok": False, "error": str(exc)}
+
+
 def build_client(config: dict[str, str]) -> StoneArtClient:
     required = (
         "STONEART_BASE_URL",
@@ -1797,6 +1920,16 @@ def parser() -> argparse.ArgumentParser:
     test = sub.add_parser("test-feishu")
     test.add_argument("--title", default="Stone Art 产品通知测试")
     test.add_argument("--status", choices=["draft", "published"], default="draft")
+
+    knowledge_sync = sub.add_parser(
+        "sync-knowledge-base",
+        help="Preview or trigger the Local KB website product sync",
+    )
+    knowledge_sync.add_argument(
+        "--preview",
+        action="store_true",
+        help="Run the read-only website import preview",
+    )
     return root
 
 
@@ -1814,6 +1947,16 @@ def command_check(client: StoneArtClient, config: dict[str, str]) -> dict[str, A
         "deepseek_configured": bool(config.get("DEEPSEEK_API_KEY")),
         "deepseek_model": config.get("DEEPSEEK_MODEL"),
         "auto_sku_series": config.get("PRODUCT_AUTO_SKU_SERIES", ""),
+        "knowledge_sync_enabled": knowledge_sync_enabled(config),
+        "knowledge_base_configured": all(
+            config.get(key)
+            for key in (
+                "LOCAL_KB_BASE_URL",
+                "LOCAL_KB_ADMIN_ORIGIN",
+                "LOCAL_KB_ADMIN_USERNAME",
+                "LOCAL_KB_ADMIN_PASSWORD",
+            )
+        ),
         "feishu_product_notify": config.get(
             "FEISHU_PRODUCT_NOTIFY_ENABLED",
             config.get("FEISHU_BLOG_NOTIFY_ENABLED", ""),
@@ -1875,6 +2018,14 @@ def main() -> int:
                     "material": "Product notification test",
                 },
                 note="飞书 Webhook、签名和产品卡片发送验证成功。",
+            )
+            output_json(result)
+            return 0
+
+        if args.command == "sync-knowledge-base":
+            result = sync_knowledge_base_products(
+                config,
+                preview=args.preview,
             )
             output_json(result)
             return 0
@@ -2034,6 +2185,7 @@ def main() -> int:
                     product=saved,
                 )
             )
+            knowledge_sync = safe_sync_knowledge_base(config, product=saved)
             output_json(
                 {
                     "ok": True,
@@ -2046,6 +2198,7 @@ def main() -> int:
                     "prepared_images": prepared_assets["image_info"],
                     "ai_cover": prepared_assets["ai_cover_result"],
                     "watermark": preview["watermark"],
+                    "knowledge_sync": knowledge_sync,
                     "notification": notification,
                     "product": product_summary(saved),
                 }
@@ -2205,6 +2358,15 @@ def main() -> int:
                     changes=changed,
                 )
             )
+            knowledge_sync = (
+                safe_sync_knowledge_base(config, product=saved)
+                if changed
+                else {
+                    "enabled": knowledge_sync_enabled(config),
+                    "ok": True,
+                    "skipped": "no product changes",
+                }
+            )
             output_json(
                 {
                     "ok": True,
@@ -2216,6 +2378,7 @@ def main() -> int:
                     + final_warnings
                     + upload_warnings,
                     "uploaded_media": uploaded,
+                    "knowledge_sync": knowledge_sync,
                     "notification": notification,
                     "product": product_summary(saved),
                 }
@@ -2260,12 +2423,14 @@ def main() -> int:
                     config, event="published", product=saved
                 )
             )
+            knowledge_sync = safe_sync_knowledge_base(config, product=saved)
             output_json(
                 {
                     "ok": True,
                     "id": args.id,
                     "backup": str(backup.resolve()),
                     "public_check": public_check,
+                    "knowledge_sync": knowledge_sync,
                     "notification": notification,
                 }
             )

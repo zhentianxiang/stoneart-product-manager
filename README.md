@@ -24,6 +24,8 @@ Codex skill for turning sculpture product photos into completed Stone Art Sculpt
 - Back up products before changes
 - Verify category, gallery, SEO, status, and public URL
 - Send signed Feishu cards after product changes
+- Trigger Local KB website sync after publishing or updating a published product
+- Report Local KB license and connectivity failures without rolling back the product
 
 ## Install
 
@@ -74,6 +76,8 @@ python scripts/stoneart_products.py draft-product \
 python scripts/add_watermark.py \
   --image product.jpg \
   --output-dir work/example/watermarked
+python scripts/stoneart_products.py sync-knowledge-base --preview
+python scripts/stoneart_products.py sync-knowledge-base
 ```
 
 ## Security

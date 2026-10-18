@@ -1,6 +1,6 @@
 ---
 name: stoneart-product-manager
-description: End-to-end creation and publishing of Stone Art Sculpture products from a product image or reference photo. Use this skill whenever the user sends a sculpture, statue, fountain, planter, bench, fireplace, gazebo, bust, relief, or other product image and asks to identify it, write its product page, create a draft, add it to the company website, upload its gallery images, set its category, optimize it for Google SEO, add or configure product-image watermarks, update an existing product, or 上架/发布/新建公司产品. Also use it for near-miss requests such as “把这个图片放到产品里”, “根据图片写一个产品”, “上架这个雕塑”, “给产品图片加水印”, or when the user wants ready-to-copy product-listing prompts, even if they do not name this skill.
+description: End-to-end creation and publishing of Stone Art Sculpture products from a product image or reference photo. Use this skill whenever the user sends a sculpture, statue, fountain, planter, bench, fireplace, gazebo, bust, relief, or other product image and asks to identify it, write its product page, create a draft, add it to the company website, upload its gallery images, set its category, optimize it for Google SEO, add or configure product-image watermarks, synchronize published products into the Local KB, update an existing product, or 上架/发布/新建公司产品. Also use it for near-miss requests such as “把这个图片放到产品里”, “根据图片写一个产品”, “上架这个雕塑”, “给产品图片加水印”, “发布后同步知识库”, or when the user wants ready-to-copy product-listing prompts, even if they do not name this skill.
 compatibility: Requires Python 3.10+, network access, requests, Pillow, and dashscope. Uses Aliyun Wan2.7 for AI product covers and DeepSeek for fallback vision and structured draft generation.
 ---
 
@@ -54,6 +54,22 @@ PRODUCT_WATERMARK_FONT_PATH=assets/fonts/GreatVibes-Regular.ttf
 ```
 
 The bundled Great Vibes font is distributed under the SIL Open Font License. The watermark is drawn after AI cover generation and before upload, so the AI prompt does not need to create or preserve any overlay text.
+
+Local KB website-sync configuration:
+
+```dotenv
+LOCAL_KB_SYNC_ENABLED=true
+LOCAL_KB_BASE_URL=https://ai.stoneartsculpture.com
+LOCAL_KB_ADMIN_ORIGIN=https://ai.stoneartsculpture.com
+LOCAL_KB_ADMIN_USERNAME=admin
+LOCAL_KB_ADMIN_PASSWORD=...
+LOCAL_KB_SYNC_PATH=/api/imports/stoneart/sync
+LOCAL_KB_PREVIEW_PATH=/api/imports/stoneart/preview
+LOCAL_KB_SYNC_TIMEOUT=300
+LOCAL_KB_VERIFY_TLS=true
+```
+
+When Local KB runs beside the skill on the same Mac and its frontend exposes port 3210, `LOCAL_KB_BASE_URL` may use `http://127.0.0.1:3210` while `LOCAL_KB_ADMIN_ORIGIN` stays on the public HTTPS origin. The sync endpoint validates the `Origin` header, so these two values are intentionally separate. `LOCAL_KB_ADMIN_ORIGIN` must exactly match one value in Local KB's `LOCAL_KB_ADMIN_ALLOWED_ORIGINS`; otherwise the POST returns `403 请求来源校验失败`.
 
 ## When the User Asks How to Use the Skill
 
@@ -291,6 +307,31 @@ python scripts/stoneart_products.py verify-product --id <product-id>
 
 Verify title, slug, status, category IDs, cover image, gallery, SEO fields, and public HTTP status. Fetch the saved product again before reporting success.
 
+### 8. Sync the published product into Local KB
+
+After a product is created as published, an already-published product is updated, or a draft is published, the CLI automatically calls Local KB's website product sync. This endpoint refreshes product records, images, knowledge exports, vector indexing, and Chinese-name translation. Leave `LOCAL_KB_SYNC_ENABLED=true` for normal production use.
+
+The sync runs after the Stone Art product has already been saved. A login failure, license error, timeout, or Local KB outage must not roll back or unpublish the website product. Report the `knowledge_sync` object separately:
+
+```json
+{
+  "enabled": true,
+  "ok": false,
+  "status": 402,
+  "error": "尚未上传授权证书",
+  "license_status": {"valid": false, "status": "missing"}
+}
+```
+
+Preview or retry the knowledge sync manually:
+
+```bash
+python scripts/stoneart_products.py sync-knowledge-base --preview
+python scripts/stoneart_products.py sync-knowledge-base
+```
+
+`--preview` calls `LOCAL_KB_PREVIEW_PATH`. Without it, the command calls `LOCAL_KB_SYNC_PATH`. A private Local KB installation returns HTTP 402 until a valid license is uploaded in the Local KB admin UI; do not bypass or disable that check.
+
 ## Existing Product Updates
 
 Fetch and back up the current product first:
@@ -311,6 +352,8 @@ python scripts/stoneart_products.py update-product \
 
 The command displays a dry-run diff. Add `--apply` after reviewing it. Use `--replace-gallery` only when the new images should replace the existing gallery.
 
+If the saved product is published and fields actually changed, the update command also triggers the Local KB website sync.
+
 ## Publishing
 
 Publish an existing draft only when the user explicitly asks:
@@ -321,6 +364,8 @@ python scripts/stoneart_products.py publish-product --id <product-id> --apply
 ```
 
 Publication validation requires a title, slug, enabled category, and cover image. Missing optional facts do not block publication, but the page must not claim them.
+
+Successful publication triggers the Local KB website sync. The result is returned in `knowledge_sync`; failures are non-blocking.
 
 ## Content Rules
 

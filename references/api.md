@@ -167,6 +167,8 @@ python scripts/stoneart_products.py next-sku --series SAS-215
 python scripts/add_watermark.py \
   --image work/example/images/product-01.jpg \
   --output-dir work/example/images/watermarked
+python scripts/stoneart_products.py sync-knowledge-base --preview
+python scripts/stoneart_products.py sync-knowledge-base
 ```
 
 ## Product Image Watermarks
@@ -174,6 +176,18 @@ python scripts/add_watermark.py \
 `add_watermark.py` creates a new copy with a translucent multicolor script watermark. It supports `random`, `top-left`, `top-right`, `bottom-left`, `bottom-right`, `middle-left`, and `middle-right` positions. For portrait product photos, `random` selects between the top corners so the mark remains inside the product page's top-cropped gallery frame.
 
 `create-product` and `update-product` accept `--watermark` and `--no-watermark`. When neither is supplied, `PRODUCT_WATERMARK_ENABLED` controls the behavior. The upload pipeline writes watermarked copies under `work/processed/watermarked/`, recompresses them when necessary, and never overwrites source images.
+
+## Local KB Website Sync
+
+The Local KB admin API requires an authenticated session and an allowed `Origin` header:
+
+- `POST /api/auth/login` with `username` and `password`
+- `GET /api/imports/stoneart/preview` for a read-only preview
+- `POST /api/imports/stoneart/sync` to sync products, images, exports, vector indexing, and translations
+
+Configure `LOCAL_KB_BASE_URL`, `LOCAL_KB_ADMIN_ORIGIN`, `LOCAL_KB_ADMIN_USERNAME`, and `LOCAL_KB_ADMIN_PASSWORD`. Keep `LOCAL_KB_ADMIN_ORIGIN` on the public HTTPS origin even when `LOCAL_KB_BASE_URL` uses the local Docker proxy at `http://127.0.0.1:3210`.
+
+After a published product is created, a published product is updated, or a draft is published, the CLI calls the sync endpoint automatically when `LOCAL_KB_SYNC_ENABLED=true`. The result appears under `knowledge_sync`. Product saves succeed even if Local KB returns an authentication, timeout, connectivity, or license error.
 
 ## Category and SKU Allocation
 
