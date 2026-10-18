@@ -67,7 +67,12 @@ LOCAL_KB_SYNC_PATH=/api/imports/stoneart/sync
 LOCAL_KB_PREVIEW_PATH=/api/imports/stoneart/preview
 LOCAL_KB_SYNC_TIMEOUT=300
 LOCAL_KB_VERIFY_TLS=true
+LOCAL_KB_CA_BUNDLE=assets/cloudflare-origin-rsa-root.pem
 ```
+
+The skill never reads or stores the Local KB license certificate. License validation happens inside the Local KB deployment, and each deployment has its own installation fingerprint. Point `LOCAL_KB_BASE_URL` at the licensed instance; do not copy a license from another machine.
+
+When the Local KB HTTPS endpoint uses a Cloudflare Origin certificate, set `LOCAL_KB_CA_BUNDLE` to the bundled `assets/cloudflare-origin-rsa-root.pem`. macOS Keychain trust does not automatically apply to the Python runtime used by the skill.
 
 When Local KB runs beside the skill on the same Mac and its frontend exposes port 3210, `LOCAL_KB_BASE_URL` may use `http://127.0.0.1:3210` while `LOCAL_KB_ADMIN_ORIGIN` stays on the public HTTPS origin. The sync endpoint validates the `Origin` header, so these two values are intentionally separate. `LOCAL_KB_ADMIN_ORIGIN` must exactly match one value in Local KB's `LOCAL_KB_ADMIN_ALLOWED_ORIGINS`; otherwise the POST returns `403 请求来源校验失败`.
 
