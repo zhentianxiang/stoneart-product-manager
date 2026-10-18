@@ -1,0 +1,25 @@
+{
+  "skill_name": "stoneart-product-manager",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "使用 $stoneart-product-manager，把这张马林鱼铜雕图片上架到公司产品。先识图、选分类、写英文产品文案和 SEO，再给我 dry-run。尺寸、价格和 SKU 不确定就不要编造。",
+      "expected_output": "A structured product draft with image-based observations, an enabled category path, English copy without an H1, SEO fields, no invented facts, and a no-write product preview.",
+      "files": [
+        "/Users/macpro/code代码/StoneArtSculpture-Front/data/cnstatue-export/media/01a37a15380c8266-bronze-Marlin-Fountain.jpg"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "使用 $stoneart-product-manager，根据这 4 张产品图片创建草稿，不要发布。先判断正面的主图和其余细节图；只把主图交给阿里云百炼去除水印和替换户外背景，其余原图保留。每张大于 1MB 的图自动压缩。最终图库要正好 4 张：1 张 AI 封面加 3 张原图。",
+      "expected_output": "A draft-only plan with a selected AI cover, gallery length exactly equal to the four source images, background-replacement prompt, compression status, image alt text, and no production writes.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "使用 $stoneart-product-manager 更新产品 7844，把封面换掉并补充一张侧面细节图。先读取当前产品、备份并显示字段和图片 diff，不要直接 apply。",
+      "expected_output": "The current product is fetched, only intended fields are proposed, image order is explicit, and the command remains a dry-run until approval.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+config.local.env
+work/
+__pycache__/
+*.pyc
+*.skill
