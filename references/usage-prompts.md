@@ -56,7 +56,7 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 - 识别图片之间是否有重复视角
 - 如果有水印、电话、网址、供应商 Logo，先指出位置，不要直接当最终上架图
 - 根据真实可见内容写产品文案，不要靠图片猜尺寸和价格
-- 产品正文需要插图时使用 {{product_image:1}}、{{product_image:2}} 等占位符
+- 产品正文需要插图时使用 {{product_image:1}}、{{product_image:2}} 等占位符；新建和更新产品都会在上传后替换为正式图片地址
 - 选择正确分类，先 dry-run，不要写线上
 ```
 

@@ -208,7 +208,7 @@ When an image should appear inside the product body, use a gallery placeholder i
 {{product_image:2}}
 ```
 
-The create command replaces placeholders with the final CMS URLs after upload. Image 1 is the AI-processed cover; the remaining numbers follow the final gallery order.
+The create and update commands replace placeholders with the final CMS URLs after upload. Image 1 is the AI-processed cover for new products; for updates, numbering follows the final gallery after the new images are merged or replace the existing gallery.
 
 ### 5. Preview the exact product payload
 
@@ -351,6 +351,8 @@ python scripts/stoneart_products.py update-product \
 ```
 
 The command displays a dry-run diff. Add `--apply` after reviewing it. Use `--replace-gallery` only when the new images should replace the existing gallery.
+
+Body image placeholders such as `{{product_image:1}}` are resolved after the final gallery is known. With `--replace-gallery`, image 1 is the first new upload; without it, numbering starts from the existing gallery and continues into the new uploads. The command rejects a placeholder that exceeds the final gallery count or that is placed inside an existing `<figure>`.
 
 If the saved product is published and fields actually changed, the update command also triggers the Local KB website sync.
 

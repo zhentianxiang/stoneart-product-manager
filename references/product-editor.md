@@ -95,12 +95,14 @@ Use placeholders rather than inventing media URLs:
 {{product_image:2}}
 ```
 
+Place each placeholder on its own line or between paragraphs. Do not insert it inside an existing `<figure>` or Markdown image, because the command expands it into a complete figure.
+
 Final gallery order is:
 
 1. AI-processed cover
 2. Remaining original images in reviewed order
 
-The create command replaces each placeholder with the final uploaded image URL.
+The create and update commands replace each placeholder with the final uploaded image URL. For updates, confirm the numbering against the gallery that results from the merge or `--replace-gallery` operation.
 
 ### Design and visible details
 

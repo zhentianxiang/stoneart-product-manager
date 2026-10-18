@@ -1429,6 +1429,30 @@ def render_product_images_in_body(
         payload["body_html"] = body
 
 
+def unresolved_body_image_placeholders(payload: dict[str, Any]) -> list[int]:
+    indices: set[int] = set()
+    for key in ("body_markdown", "body_html"):
+        body = str(payload.get(key) or "")
+        for value in re.findall(
+            r"\{\{product_image(?::|_)(\d+)\}\}", body, flags=re.I
+        ):
+            indices.add(int(value))
+    return sorted(indices)
+
+
+def body_image_placeholders_inside_figures(payload: dict[str, Any]) -> list[int]:
+    indices: set[int] = set()
+    body = str(payload.get("body_html") or "")
+    pattern = re.compile(
+        r"<figure\b[^>]*>(?:(?!</figure>).)*?"
+        r"\{\{product_image(?::|_)(\d+)\}\}",
+        flags=re.I | re.S,
+    )
+    for match in pattern.finditer(body):
+        indices.add(int(match.group(1)))
+    return sorted(indices)
+
+
 def backup_product(product: dict[str, Any]) -> Path:
     created = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     path = (
@@ -2263,6 +2287,12 @@ def main() -> int:
                 )
                 if args.replace_gallery or not merged.get("cover_image"):
                     preview_payload["cover_image"] = pending_gallery[0]["url"]
+            preview_gallery = preview_payload.get("images") or []
+            invalid_placeholders = [
+                value
+                for value in body_image_placeholder_indices(preview_payload)
+                if value < 1 or value > len(preview_gallery)
+            ]
             errors, validation_warnings = validate_product(
                 preview_payload,
                 category_ids=category_ids,
@@ -2275,6 +2305,26 @@ def main() -> int:
                     key in patch for key in ("body_html", "body_markdown")
                 ),
             )
+            if invalid_placeholders:
+                errors.append(
+                    "body image placeholder index exceeds the final gallery count: "
+                    + ", ".join(str(value) for value in invalid_placeholders)
+                )
+            nested_placeholders = body_image_placeholders_inside_figures(
+                preview_payload
+            )
+            if nested_placeholders:
+                errors.append(
+                    "body image placeholders must not be placed inside an existing "
+                    "<figure>: "
+                    + ", ".join(str(value) for value in nested_placeholders)
+                )
+            if (
+                not image_paths
+                and not invalid_placeholders
+                and not nested_placeholders
+            ):
+                render_product_images_in_body(preview_payload, preview_gallery)
             changed = {
                 key: {"before": current.get(key), "after": preview_payload.get(key)}
                 for key in PRODUCT_FIELDS
@@ -2320,6 +2370,9 @@ def main() -> int:
                 )
                 if args.replace_gallery or not merged.get("cover_image"):
                     merged["cover_image"] = gallery[0]["url"]
+            nested_placeholders = body_image_placeholders_inside_figures(merged)
+            if not nested_placeholders:
+                render_product_images_in_body(merged, merged.get("images") or [])
             errors, final_warnings = validate_product(
                 merged,
                 category_ids=category_ids,
@@ -2328,6 +2381,19 @@ def main() -> int:
                     key in patch for key in ("body_html", "body_markdown")
                 ),
             )
+            if nested_placeholders:
+                errors.append(
+                    "body image placeholders must not be placed inside an existing "
+                    "<figure>: "
+                    + ", ".join(str(value) for value in nested_placeholders)
+                )
+            unresolved_placeholders = unresolved_body_image_placeholders(merged)
+            if unresolved_placeholders:
+                errors.append(
+                    "body image placeholders could not be resolved against the "
+                    "final gallery: "
+                    + ", ".join(str(value) for value in unresolved_placeholders)
+                )
             if errors:
                 output_json(
                     {

@@ -220,7 +220,7 @@ The final gallery length equals the number of supplied original images. The orig
 {{product_image:2}}
 ```
 
-The CLI replaces them with Markdown figures after media upload.
+The CLI replaces them with Markdown figures after media upload. This also applies to `update-product`: placeholders are resolved against the final gallery after new images are merged or replace the existing gallery. An out-of-range placeholder, or one placed inside an existing `<figure>`, stops the save.
 
 Relevant configuration:
 
