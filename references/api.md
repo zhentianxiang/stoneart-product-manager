@@ -205,7 +205,7 @@ For new product creation:
 
 1. Validate every local image with Pillow.
 2. Compress files larger than `PRODUCT_IMAGE_MAX_BYTES` into `work/processed/`.
-3. Send only the selected `--cover-index` image to Aliyun Wan2.7.
+3. Send only the selected `--cover-index` image to local Qwen-Image-2.1, with Wan2.7 fallback.
 4. Restore the generated image to the source dimensions.
 5. Compress the generated image when necessary.
 6. Upload the AI cover as image 1.
@@ -225,6 +225,13 @@ The CLI replaces them with Markdown figures after media upload. This also applie
 Relevant configuration:
 
 ```dotenv
+LOCAL_IMAGE_ENABLED=true
+LOCAL_IMAGE_BASE_URL=http://120.10.255.14:7890/v1
+LOCAL_IMAGE_MODEL=qwen-image-2.1
+LOCAL_IMAGE_API_KEY=
+LOCAL_IMAGE_TIMEOUT=960
+LOCAL_IMAGE_HEALTH_TIMEOUT=5
+LOCAL_IMAGE_STEPS=40
 ALIYUN_WAN_COMPATIBLE_BASE_URL=...
 ALIYUN_WAN_DASHSCOPE_BASE_URL=...
 ALIYUN_DASHSCOPE_API_KEY=...
@@ -234,6 +241,8 @@ PRODUCT_COVER_AI_PROMPT=...
 PRODUCT_IMAGE_MAX_BYTES=1048576
 PRODUCT_IMAGE_JPEG_QUALITY=90
 ```
+
+AI cover edits go to the local Qwen-Image-2.1 editing endpoint first. The same request falls back to the Wan2.7 compatible endpoint, then the DashScope SDK, when the local service is disabled, unhealthy, times out, or returns no image. `edit-product-cover` reports the provider, model, and every attempt in its JSON result.
 
 ## Troubleshooting
 

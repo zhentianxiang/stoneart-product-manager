@@ -10,7 +10,7 @@ Codex skill for turning sculpture product photos into completed Stone Art Sculpt
 - Match the product to the live category tree
 - Generate SEO-focused product copy without inventing facts
 - Generate a structured draft with DeepSeek when helpful
-- Select one hero image and replace its full background with Aliyun Wan2.7
+- Select one hero image and replace its full background with local Qwen-Image-2.1, falling back to Aliyun Wan2.7 when the local service is unavailable
 - Remove watermark and overlay text from the AI cover
 - Keep the AI cover plus all remaining originals in a correctly sized gallery
 - Use uploaded gallery images inside product body content

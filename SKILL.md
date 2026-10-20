@@ -1,7 +1,7 @@
 ---
 name: stoneart-product-manager
 description: End-to-end creation and publishing of Stone Art Sculpture products from a product image or reference photo. Use this skill whenever the user sends a sculpture, statue, fountain, planter, bench, fireplace, gazebo, bust, relief, or other product image and asks to identify it, write its product page, create a draft, add it to the company website, upload its gallery images, set its category, optimize it for Google SEO, add or configure product-image watermarks, synchronize published products into the Local KB, update an existing product, or 上架/发布/新建公司产品. Also use it for near-miss requests such as “把这个图片放到产品里”, “根据图片写一个产品”, “上架这个雕塑”, “给产品图片加水印”, “发布后同步知识库”, or when the user wants ready-to-copy product-listing prompts, even if they do not name this skill.
-compatibility: Requires Python 3.10+, network access, requests, Pillow, and dashscope. Uses Aliyun Wan2.7 for AI product covers and DeepSeek for fallback vision and structured draft generation.
+compatibility: Requires Python 3.10+, network access, requests, and Pillow. Uses local Qwen-Image-2.1 for AI product covers with Aliyun Wan2.7 as fallback; dashscope is optional and DeepSeek provides fallback vision and structured drafts.
 ---
 
 # Stone Art Product Manager
@@ -29,6 +29,13 @@ python scripts/stoneart_products.py check
 Product-cover configuration:
 
 ```dotenv
+LOCAL_IMAGE_ENABLED=true
+LOCAL_IMAGE_BASE_URL=http://120.10.255.14:7890/v1
+LOCAL_IMAGE_MODEL=qwen-image-2.1
+LOCAL_IMAGE_API_KEY=
+LOCAL_IMAGE_TIMEOUT=960
+LOCAL_IMAGE_HEALTH_TIMEOUT=5
+LOCAL_IMAGE_STEPS=40
 ALIYUN_WAN_COMPATIBLE_BASE_URL=...
 ALIYUN_WAN_DASHSCOPE_BASE_URL=...
 ALIYUN_DASHSCOPE_API_KEY=...
@@ -39,7 +46,7 @@ PRODUCT_IMAGE_MAX_BYTES=1048576
 PRODUCT_IMAGE_JPEG_QUALITY=90
 ```
 
-Wan2.7 is used for the selected product cover. DeepSeek is not used for background replacement.
+The selected product cover is edited by the local Qwen-Image-2.1 service first. If that service is unhealthy, times out, or returns no image, the same prompt automatically retries through Wan2.7. DeepSeek is not used for background replacement.
 
 Product watermark configuration:
 
@@ -256,7 +263,7 @@ python scripts/stoneart_products.py create-product \
 Before upload, the CLI:
 
 1. Compresses images larger than `PRODUCT_IMAGE_MAX_BYTES`.
-2. Sends only the selected hero image to Aliyun Wan2.7.
+2. Sends only the selected hero image to local Qwen-Image-2.1, with Wan2.7 fallback.
 3. Removes watermarks/overlay text and replaces the full background using `PRODUCT_COVER_AI_PROMPT`.
 4. Restores the generated image to the source dimensions.
 5. Compresses the generated image if needed.
@@ -275,7 +282,7 @@ For four supplied images, the final gallery has four images:
 
 The original hero is not added as a fifth item. Inspect the generated cover with `view_image` before saving. Reject it if the sculpture changes shape, gains or loses major details, contains added people/text/logos, or looks physically implausible.
 
-Use `--no-ai-cover` only when the user explicitly wants to skip Wan2.7.
+Use `--no-ai-cover` only when the user explicitly wants to skip AI cover editing.
 
 ### 6.1 Watermark final upload images
 

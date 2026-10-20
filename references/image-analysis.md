@@ -107,7 +107,7 @@ Order images intentionally:
 
 Reject blurry duplicate angles unless they show a real difference. Do not use multiple near-identical images just to inflate the gallery.
 
-Choose one source image as the front/hero cover. For a new product, this is the only image sent to Aliyun Wan2.7 for full background replacement. The final gallery is:
+Choose one source image as the front/hero cover. For a new product, this is the only image sent to the local Qwen-Image-2.1 editor (Wan2.7 fallback) for full background replacement. The final gallery is:
 
 ```text
 AI-processed hero

@@ -11,7 +11,7 @@
     },
     {
       "id": 2,
-      "prompt": "使用 $stoneart-product-manager，根据这 4 张产品图片创建草稿，不要发布。先判断正面的主图和其余细节图；只把主图交给阿里云百炼去除水印和替换户外背景，其余原图保留。每张大于 1MB 的图自动压缩。最终图库要正好 4 张：1 张 AI 封面加 3 张原图。",
+      "prompt": "使用 $stoneart-product-manager，根据这 4 张产品图片创建草稿，不要发布。先判断正面的主图和其余细节图；只把主图交给本地 Qwen-Image-2.1（失败回退阿里云百炼）去除水印和替换户外背景，其余原图保留。每张大于 1MB 的图自动压缩。最终图库要正好 4 张：1 张 AI 封面加 3 张原图。",
       "expected_output": "A draft-only plan with a selected AI cover, gallery length exactly equal to the four source images, background-replacement prompt, compression status, image alt text, and no production writes.",
       "files": []
     },
