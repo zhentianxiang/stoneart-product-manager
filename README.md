@@ -5,7 +5,8 @@ Codex skill for turning sculpture product photos into completed Stone Art Sculpt
 ## Features
 
 - Inspect product images with Codex vision first
-- Use DeepSeek vision as a structured fallback
+- Use local Qwen3-VL-30B-A3B-Instruct as the structured vision fallback
+- Use DeepSeek vision only when both Codex and the local vision model are unavailable
 - Identify product subject, material, style, and use
 - Match the product to the live category tree
 - Generate SEO-focused product copy without inventing facts

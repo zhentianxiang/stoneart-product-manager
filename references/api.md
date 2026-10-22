@@ -225,6 +225,12 @@ The CLI replaces them with Markdown figures after media upload. This also applie
 Relevant configuration:
 
 ```dotenv
+LOCAL_VISION_ENABLED=true
+LOCAL_VISION_BASE_URL=http://120.10.255.14:7893/v1
+LOCAL_VISION_MODEL=Qwen3-VL-30B-A3B-Instruct
+LOCAL_VISION_API_KEY=
+LOCAL_VISION_TIMEOUT=180
+LOCAL_VISION_MAX_TOKENS=4000
 LOCAL_IMAGE_ENABLED=true
 LOCAL_IMAGE_BASE_URL=http://120.10.255.14:7890/v1
 LOCAL_IMAGE_MODEL=qwen-image-2.1
@@ -241,6 +247,8 @@ PRODUCT_COVER_AI_PROMPT=...
 PRODUCT_IMAGE_MAX_BYTES=1048576
 PRODUCT_IMAGE_JPEG_QUALITY=90
 ```
+
+Image inspection keeps current Codex vision first. `vision` calls local Qwen3-VL next and falls back to DeepSeek only when the local vision request fails.
 
 AI cover edits go to the local Qwen-Image-2.1 editing endpoint first. The same request falls back to the Wan2.7 compatible endpoint, then the DashScope SDK, when the local service is disabled, unhealthy, times out, or returns no image. `edit-product-cover` reports the provider, model, and every attempt in its JSON result.
 

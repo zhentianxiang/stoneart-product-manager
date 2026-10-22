@@ -1,7 +1,7 @@
 ---
 name: stoneart-product-manager
 description: End-to-end creation and publishing of Stone Art Sculpture products from a product image or reference photo. Use this skill whenever the user sends a sculpture, statue, fountain, planter, bench, fireplace, gazebo, bust, relief, or other product image and asks to identify it, write its product page, create a draft, add it to the company website, upload its gallery images, set its category, optimize it for Google SEO, add or configure product-image watermarks, synchronize published products into the Local KB, update an existing product, or 上架/发布/新建公司产品. Also use it for near-miss requests such as “把这个图片放到产品里”, “根据图片写一个产品”, “上架这个雕塑”, “给产品图片加水印”, “发布后同步知识库”, or when the user wants ready-to-copy product-listing prompts, even if they do not name this skill.
-compatibility: Requires Python 3.10+, network access, requests, and Pillow. Uses local Qwen-Image-2.1 for AI product covers with Aliyun Wan2.7 as fallback; dashscope is optional and DeepSeek provides fallback vision and structured drafts.
+compatibility: Requires Python 3.10+, network access, requests, and Pillow. Image understanding uses current Codex vision first, local Qwen3-VL-30B-A3B-Instruct second, and DeepSeek last. Uses local Qwen-Image-2.1 for AI product covers with Aliyun Wan2.7 as fallback; dashscope is optional.
 ---
 
 # Stone Art Product Manager
@@ -25,6 +25,23 @@ Run a read-only configuration check:
 cd <skill-directory>
 python scripts/stoneart_products.py check
 ```
+
+Image understanding uses this provider order:
+
+```dotenv
+LOCAL_VISION_ENABLED=true
+LOCAL_VISION_BASE_URL=http://120.10.255.14:7893/v1
+LOCAL_VISION_MODEL=Qwen3-VL-30B-A3B-Instruct
+LOCAL_VISION_API_KEY=
+LOCAL_VISION_TIMEOUT=180
+LOCAL_VISION_MAX_TOKENS=4000
+```
+
+1. Use the current Codex conversation's native image capability first. It can compare product context and user corrections in one pass.
+2. When Codex cannot access or reliably interpret an image, run the bundled `vision` command. It calls the local Qwen3-VL model first.
+3. Use DeepSeek vision only when the local model is disabled, unavailable, times out, or returns no usable result.
+
+The returned `vision_provider` and `vision_attempts` fields expose any fallback. DeepSeek remains available for text generation and structured drafting, but it is now the final image-understanding fallback.
 
 Product-cover configuration:
 
@@ -133,7 +150,7 @@ Record:
 
 Write the observations to `work/<slug>/observation.json` using the schema in `references/image-analysis.md`.
 
-Use DeepSeek vision only when Codex cannot inspect the image reliably:
+If Codex cannot inspect the image reliably, use the bundled vision command. It tries local Qwen3-VL before DeepSeek:
 
 ```bash
 python scripts/stoneart_products.py vision \

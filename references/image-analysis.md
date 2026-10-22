@@ -7,17 +7,24 @@
 3. Observation JSON schema
 4. Multi-image sets
 5. Watermarks and sensitive content
-6. DeepSeek fallback
+6. Local Qwen / DeepSeek fallback
 
 ## 1. Priority Order
 
 Use Codex's own image capability first. It can reason across product context, compare similar products, detect image order, and write the final product draft in one coherent workflow.
 
-Use DeepSeek vision only when:
+Use the bundled vision fallback only when:
 
 - Codex cannot access the image.
 - The image is too ambiguous for a confident first pass.
 - A second structured observation would materially reduce uncertainty.
+
+The fallback order is:
+
+1. Local `Qwen3-VL-30B-A3B-Instruct`.
+2. DeepSeek vision only when the local model is disabled, unavailable, times out, or returns no usable result.
+
+Codex remains responsible for the final observation and product decision. Fallback JSON is supporting evidence, not an automatic source of facts.
 
 ## 2. What Codex Should Record
 
@@ -130,7 +137,7 @@ If a supplier watermark, price tag, URL, phone number, or product code is visibl
 
 Classical artistic nudity can be a legitimate sculpture subject. Still record minors, explicit sexual content, graphic violence, or unrelated private information. Do not send sensitive images to any external model without user authorization.
 
-## 6. DeepSeek Fallback
+## 6. Local Qwen / DeepSeek Fallback
 
 ```bash
 python scripts/stoneart_products.py vision \
@@ -138,4 +145,4 @@ python scripts/stoneart_products.py vision \
   --output work/<slug>/vision.json
 ```
 
-Review the fallback JSON. DeepSeek may misidentify material or scale; treat its material and dimension guesses as suggestions, not facts.
+The command calls local Qwen3-VL first and falls back to DeepSeek only when local vision fails. Review the returned `vision_provider` and `vision_attempts` fields. Either model may misidentify material or scale; treat material and dimension guesses as suggestions, not facts.

@@ -28,7 +28,7 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 使用 $stoneart-product-manager，把这张图片里的产品上架到公司产品。
 
 要求：
-- 先用你自己的识图能力分析图片，不要一开始就调用 DeepSeek
+- 先用当前 Codex 对话的识图能力分析图片；只有 Codex 无法可靠识图时才调用本地 Qwen3-VL，最后才回退 DeepSeek
 - 识别产品主体、可见材质、风格、细节、使用场景和图片中有没有水印
 - 查询现有产品分类并选择最准确的叶子分类
 - 如果 SKU 为空，就按当前有效系列自动取下一个编号
