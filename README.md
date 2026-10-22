@@ -23,6 +23,7 @@ Codex skill for turning sculpture product photos into completed Stone Art Sculpt
 - Create product drafts or publish on explicit request
 - Preserve existing body HTML during updates
 - Back up products before changes
+- Preserve changed product URLs with permanent redirects and verify old-to-new link health
 - Verify category, gallery, SEO, status, and public URL
 - Send signed Feishu cards after product changes
 - Trigger Local KB website sync after publishing or updating a published product

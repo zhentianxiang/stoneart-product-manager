@@ -17,7 +17,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
@@ -697,6 +697,48 @@ def next_sku_for_series(
 
 def product_public_url(config: dict[str, str], slug: str) -> str:
     return config["STONEART_BASE_URL"].rstrip("/") + f"/products/{slug}/"
+
+
+def redirect_targets_match(location: str, expected_url: str) -> bool:
+    actual = urlsplit(location)
+    expected = urlsplit(expected_url)
+    return (
+        actual.scheme in {"http", "https"}
+        and actual.netloc == expected.netloc
+        and actual.path.rstrip("/") == expected.path.rstrip("/")
+        and actual.query == expected.query
+    )
+
+
+def check_redirect(
+    config: dict[str, str], old_url: str, new_url: str
+) -> dict[str, Any]:
+    site = config["STONEART_BASE_URL"].rstrip("/") + "/"
+    old_absolute = urljoin(site, old_url)
+    new_absolute = urljoin(site, new_url)
+    response = requests.get(old_absolute, allow_redirects=False, timeout=30)
+    location = response.headers.get("Location", "")
+    resolved_location = urljoin(old_absolute, location) if location else ""
+    new_response = requests.get(new_absolute, allow_redirects=True, timeout=30)
+    permanent = response.status_code in {301, 308}
+    matches = bool(
+        resolved_location
+        and redirect_targets_match(resolved_location, new_absolute)
+    )
+    destination_ok = new_response.status_code < 400
+    return {
+        "ok": permanent and matches and destination_ok,
+        "old_url": old_absolute,
+        "old_status": response.status_code,
+        "location": resolved_location,
+        "expected_location": new_absolute,
+        "permanent_redirect": permanent,
+        "location_matches": matches,
+        "new_url": new_absolute,
+        "new_status": new_response.status_code,
+        "new_final_url": new_response.url,
+        "destination_ok": destination_ok,
+    }
 
 
 def product_admin_url(config: dict[str, str]) -> str:
@@ -2309,6 +2351,11 @@ def parser() -> argparse.ArgumentParser:
     verify.add_argument("--id", type=int, required=True)
     verify.add_argument("--output", default="")
 
+    redirect = sub.add_parser("check-redirect")
+    redirect.add_argument("--old-url", required=True)
+    redirect.add_argument("--new-url", required=True)
+    redirect.add_argument("--output", default="")
+
     refs = sub.add_parser("media-references")
     refs.add_argument("--id", type=int, required=True)
 
@@ -2907,6 +2954,11 @@ def main() -> int:
                 "image_count": len(product.get("images") or []),
                 "public_check": public_check,
             }
+            output_json(result, args.output)
+            return 0 if result["ok"] else 2
+
+        if args.command == "check-redirect":
+            result = check_redirect(config, args.old_url, args.new_url)
             output_json(result, args.output)
             return 0 if result["ok"] else 2
 

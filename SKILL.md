@@ -336,6 +336,16 @@ python scripts/stoneart_products.py verify-product --id <product-id>
 
 Verify title, slug, status, category IDs, cover image, gallery, SEO fields, and public HTTP status. Fetch the saved product again before reporting success.
 
+If the public slug changed, also verify the permanent redirect from the old URL:
+
+```bash
+python scripts/stoneart_products.py check-redirect \
+  --old-url /products/<old-slug>/ \
+  --new-url /products/<new-slug>/
+```
+
+The check must report `301` or `308` on the old URL, the expected new path, and a successful destination. The website records published product slug changes automatically, but the link check must still be run after deployment.
+
 ### 8. Sync the published product into Local KB
 
 After a product is created as published, an already-published product is updated, or a draft is published, the CLI automatically calls Local KB's website product sync. This endpoint refreshes product records, images, knowledge exports, vector indexing, and Chinese-name translation. Leave `LOCAL_KB_SYNC_ENABLED=true` for normal production use.
@@ -384,6 +394,18 @@ The command displays a dry-run diff. Add `--apply` after reviewing it. Use `--re
 Body image placeholders such as `{{product_image:1}}` are resolved after the final gallery is known. With `--replace-gallery`, image 1 is the first new upload; without it, numbering starts from the existing gallery and continues into the new uploads. The command rejects a placeholder that exceeds the final gallery count or that is placed inside an existing `<figure>`.
 
 If the saved product is published and fields actually changed, the update command also triggers the Local KB website sync.
+
+### Slug changes and search traffic
+
+Before changing a published product slug, save its current public URL. After deployment and the product update:
+
+1. Confirm the old URL returns a permanent `301` redirect, not `302`.
+2. Confirm the new URL returns `200` and is the redirect target.
+3. Replace internal links that still point to the old product URL.
+4. Confirm the sitemap lists the new URL.
+5. Request indexing for the new URL in Google Search Console when the update is strategically important.
+
+Keep historical redirects in place. A redirect is a safety net for external links and search results, not a replacement for updating internal links.
 
 ## Publishing
 

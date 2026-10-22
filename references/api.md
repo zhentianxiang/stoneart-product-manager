@@ -158,6 +158,9 @@ python scripts/stoneart_products.py edit-product-cover \
 python scripts/stoneart_products.py prepare-image \
   --image work/example/images/detail.jpg
 python scripts/stoneart_products.py verify-product --id 12345
+python scripts/stoneart_products.py check-redirect \
+  --old-url /products/old-slug/ \
+  --new-url /products/new-slug/
 python scripts/stoneart_products.py update-product \
   --id 12345 \
   --file work/example/patch.json
@@ -247,6 +250,8 @@ PRODUCT_COVER_AI_PROMPT=...
 PRODUCT_IMAGE_MAX_BYTES=1048576
 PRODUCT_IMAGE_JPEG_QUALITY=90
 ```
+
+`check-redirect` requires a permanent `301` or `308`, verifies the destination path and query string, and confirms the new URL is reachable. Run it after changing the slug of a published product.
 
 Image inspection keeps current Codex vision first. `vision` calls local Qwen3-VL next and falls back to DeepSeek only when the local vision request fails.
 

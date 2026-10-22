@@ -243,6 +243,7 @@ The AI-processed cover alt text should describe the sculpture in its new environ
 
 - Title identifies the product without unsupported claims.
 - Slug is unique and descriptive.
+- Any changed published slug has a verified permanent redirect from the old URL.
 - Excerpt is buyer-useful and not keyword-stuffed.
 - Body has no H1.
 - H2 and H3 hierarchy is logical.

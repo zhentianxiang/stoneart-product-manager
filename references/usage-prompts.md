@@ -94,6 +94,8 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 - 只修改我明确要求的字段
 - 保留没有提到的正文和 SEO 内容
 - 如果增加图片，判断应该追加还是替换 gallery
+- 如果修改已发布产品的 slug，记录旧 URL，并在部署后验证旧地址永久 301 到新地址
+- 更新站内仍指向旧产品 URL 的内部链接
 - 先显示字段 diff 和图片顺序
 - 等我确认后再 --apply
 ```
