@@ -32,6 +32,12 @@
       "prompt": "使用 $stoneart-product-manager 发布这个产品，发布成功后自动同步官网产品数据到知识库；如果知识库授权或连接失败，不能回滚已经上架的产品。",
       "expected_output": "The product is published first, then the Local KB product sync endpoint is called with an authenticated admin session and the configured Origin. Any sync failure is reported separately in knowledge_sync and does not roll back publication.",
       "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "使用 $stoneart-product-manager 创建一个白色大理石天使墓碑产品，并补充用于网站中文搜索的中文产品名。先给我 dry-run。",
+      "expected_output": "The draft includes a concise Simplified Chinese name_zh consistent with the English title, preserves any SKU or product code, and appears in the preview payload and changed fields. A missing name_zh is reported in dry-run and is never silently lost.",
+      "files": []
     }
   ]
 }

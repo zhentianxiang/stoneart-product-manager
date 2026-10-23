@@ -10,6 +10,7 @@ Codex skill for turning sculpture product photos into completed Stone Art Sculpt
 - Identify product subject, material, style, and use
 - Match the product to the live category tree
 - Generate SEO-focused product copy without inventing facts
+- Generate a Simplified Chinese product name (`name_zh`) for Chinese website search
 - Generate a structured draft with DeepSeek when helpful
 - Select one hero image and replace its full background with local Qwen-Image-2.1, falling back to Aliyun Wan2.7 when the local service is unavailable
 - Remove watermark and overlay text from the AI cover

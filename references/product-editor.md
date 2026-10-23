@@ -78,6 +78,32 @@ Example:
 
 Target 120-220 characters. It appears near the gallery and may be used in cards and search results. Do not duplicate the first body paragraph word for word.
 
+### Chinese product name
+
+`name_zh` is a separate Simplified Chinese product name used by the website's Chinese search. It does not replace the English `title`.
+
+Write a concise, natural catalog name that preserves:
+
+- Subject and sculpture type
+- Material or finish when stated
+- Intended use or setting when stated
+- SKU or product code when the English title includes one
+
+Good:
+
+- `白色大理石天使墓碑`
+- `花园用青铜双鹭雕塑`
+- `古典大理石层叠喷泉`
+
+Avoid:
+
+- Full-sentence marketing copy
+- Pinyin instead of Chinese
+- Facts not present in the English title or verified product data
+- Changing a supplied SKU or product code
+
+If the English title changes materially, re-check `name_zh` for accuracy. Preserve a manually edited Chinese name unless the edit makes it inconsistent with the new title.
+
 ## 4. Body Structure
 
 ### Opening paragraph
@@ -253,4 +279,5 @@ The AI-processed cover alt text should describe the sculpture in its new environ
 - Gallery order tells a coherent product story.
 - Alt text describes each visible image.
 - SEO title and meta description are concise.
+- `name_zh` exists, is natural Simplified Chinese, and matches the English product title.
 - Status matches the user's explicit request.

@@ -69,6 +69,7 @@ Product writable fields:
 ```text
 sku
 title
+name_zh
 slug
 excerpt
 body_html
@@ -84,6 +85,8 @@ sort_order
 images
 category_ids
 ```
+
+`name_zh` is a Simplified Chinese product name used by the website's Chinese search. It is separate from the English `title`; preserve SKU/product codes when translating.
 
 `title` and `slug` are required. `status` must be `draft` or `published`.
 
@@ -167,6 +170,7 @@ python scripts/stoneart_products.py update-product \
 python scripts/stoneart_products.py publish-product --id 12345
 python scripts/stoneart_products.py media-references --id 58332
 python scripts/stoneart_products.py next-sku --series SAS-215
+python scripts/stoneart_products.py translate-name --title "White Marble Angel Headstone"
 python scripts/add_watermark.py \
   --image work/example/images/product-01.jpg \
   --output-dir work/example/images/watermarked
@@ -252,6 +256,8 @@ PRODUCT_IMAGE_JPEG_QUALITY=90
 ```
 
 `check-redirect` requires a permanent `301` or `308`, verifies the destination path and query string, and confirms the new URL is reachable. Run it after changing the slug of a published product.
+
+`translate-name` returns a Chinese `name_zh` proposal for the supplied English title. Product creation and update automatically generate `name_zh` during `--apply` if it is empty.
 
 Image inspection keeps current Codex vision first. `vision` calls local Qwen3-VL next and falls back to DeepSeek only when the local vision request fails.
 

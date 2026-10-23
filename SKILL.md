@@ -1,6 +1,6 @@
 ---
 name: stoneart-product-manager
-description: End-to-end creation and publishing of Stone Art Sculpture products from a product image or reference photo. Use this skill whenever the user sends a sculpture, statue, fountain, planter, bench, fireplace, gazebo, bust, relief, or other product image and asks to identify it, write its product page, create a draft, add it to the company website, upload its gallery images, set its category, optimize it for Google SEO, add or configure product-image watermarks, synchronize published products into the Local KB, update an existing product, or 上架/发布/新建公司产品. Also use it for near-miss requests such as “把这个图片放到产品里”, “根据图片写一个产品”, “上架这个雕塑”, “给产品图片加水印”, “发布后同步知识库”, or when the user wants ready-to-copy product-listing prompts, even if they do not name this skill.
+description: End-to-end creation and publishing of Stone Art Sculpture products from a product image or reference photo. Use this skill whenever the user sends a sculpture, statue, fountain, planter, bench, fireplace, gazebo, bust, relief, or other product image and asks to identify it, write its product page, create a draft, add it to the company website, upload its gallery images, set its category, optimize it for Google SEO, add or configure product-image watermarks, add or update a Simplified Chinese product name (`name_zh`) for Chinese website search, synchronize published products into the Local KB, update an existing product, or 上架/发布/新建公司产品. Also use it for near-miss requests such as “把这个图片放到产品里”, “根据图片写一个产品”, “上架这个雕塑”, “给产品图片加水印”, “补充中文产品名”, “发布后同步知识库”, or when the user wants ready-to-copy product-listing prompts, even if they do not name this skill.
 compatibility: Requires Python 3.10+, network access, requests, and Pillow. Image understanding uses current Codex vision first, local Qwen3-VL-30B-A3B-Instruct second, and DeepSeek last. Uses local Qwen-Image-2.1 for AI product covers with Aliyun Wan2.7 as fallback; dashscope is optional.
 ---
 
@@ -209,6 +209,7 @@ Review the generated JSON. Correct category IDs, remove unsupported claims, and 
 Required public fields:
 
 - `title`
+- `name_zh`
 - `slug`
 - `excerpt`
 - `body_markdown`
@@ -227,6 +228,15 @@ Optional factual fields:
 - `image_alts`
 
 `sku` may be omitted when automatic numbering is enabled. Category selection is still reviewed by Codex, but the resulting category IDs are validated against the live taxonomy.
+
+Write `name_zh` as a concise, natural Simplified Chinese product name for the website's Chinese search. Preserve the subject, material, sculpture type, finish, and any supplied SKU or product code. Do not invent facts. If the draft omits it, generate one with:
+
+```bash
+python scripts/stoneart_products.py translate-name \
+  --title "<English product title>"
+```
+
+The create and update commands also generate `name_zh` during `--apply` when it is empty; a failed translation stops the save instead of silently writing a blank Chinese name.
 
 The product page template renders the title as H1. Never include another H1 in the body. Use H2 for major sections and H3 only below an H2.
 
@@ -334,7 +344,7 @@ python scripts/stoneart_products.py prepare-image \
 python scripts/stoneart_products.py verify-product --id <product-id>
 ```
 
-Verify title, slug, status, category IDs, cover image, gallery, SEO fields, and public HTTP status. Fetch the saved product again before reporting success.
+Verify title, `name_zh`, slug, status, category IDs, cover image, gallery, SEO fields, and public HTTP status. Fetch the saved product again before reporting success.
 
 If the public slug changed, also verify the permanent redirect from the old URL:
 
@@ -391,6 +401,8 @@ python scripts/stoneart_products.py update-product \
 
 The command displays a dry-run diff. Add `--apply` after reviewing it. Use `--replace-gallery` only when the new images should replace the existing gallery.
 
+When updating a product that has no `name_zh`, add one to the patch or let `--apply` generate it from the final English title. If the English title changes materially, review and update `name_zh` instead of leaving a stale translation.
+
 Body image placeholders such as `{{product_image:1}}` are resolved after the final gallery is known. With `--replace-gallery`, image 1 is the first new upload; without it, numbering starts from the existing gallery and continues into the new uploads. The command rejects a placeholder that exceeds the final gallery count or that is placed inside an existing `<figure>`.
 
 If the saved product is published and fields actually changed, the update command also triggers the Local KB website sync.
@@ -423,6 +435,8 @@ Successful publication triggers the Local KB website sync. The result is returne
 ## Content Rules
 
 - Write public copy in English unless the user requests another language.
+- Always provide `name_zh` for new products and fill it on older products when missing. It powers Chinese website search.
+- Keep `name_zh` concise and faithful to the English title; preserve SKU/product codes when they help catalog lookup.
 - Describe what is visible and what Stone Art can actually customize.
 - Keep product titles descriptive, specific, and free of unsupported superlatives.
 - Prefer 4-6 useful H2 sections over a wall of generic copy.

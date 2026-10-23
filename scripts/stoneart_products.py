@@ -44,6 +44,7 @@ DEFAULT_COVER_PROMPT = (
 PRODUCT_FIELDS = [
     "sku",
     "title",
+    "name_zh",
     "slug",
     "excerpt",
     "body_html",
@@ -498,6 +499,10 @@ def validate_product(
     body_markdown = str(payload.get("body_markdown") or "")
     if not title:
         errors.append("title is required")
+    if not str(payload.get("name_zh") or "").strip():
+        warnings.append(
+            "Chinese product name (name_zh) is empty; provide it or generate it before saving"
+        )
     if not slug:
         errors.append("slug is required")
     elif not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug):
@@ -1487,6 +1492,7 @@ def product_summary(item: dict[str, Any]) -> dict[str, Any]:
             "id",
             "sku",
             "title",
+            "name_zh",
             "slug",
             "excerpt",
             "size",
@@ -1544,10 +1550,13 @@ def draft_product(
         "enabled_categories": category_payload,
         "similar_products": similar_products(client, observation),
         "required_output": (
-            "Return one JSON object with title, slug, excerpt, body_markdown, seo_title, "
+            "Return one JSON object with title, name_zh, slug, excerpt, body_markdown, seo_title, "
             "seo_description, status='draft', sku, size, material, price, category_ids, "
             "image_alts, missing_information, and claims_to_verify. Use only enabled "
             "category IDs from the supplied list. Do not include an H1 in body_markdown. "
+            "Write name_zh as a concise, natural Simplified Chinese product name for "
+            "website search. Preserve the subject, material, sculpture type, finish, "
+            "and any supplied SKU/product code; do not add unsupported facts. "
             "If an image should appear inside the body, insert a placeholder such as "
             "{{product_image:1}} or {{product_image:2}} instead of inventing a URL. "
             "Placeholder numbers refer to the final gallery order: image 1 is the "
@@ -1968,6 +1977,26 @@ def translate_title_zh(config: dict[str, str], title: str) -> str:
     return ""
 
 
+def ensure_product_name_zh(
+    config: dict[str, str], payload: dict[str, Any]
+) -> str:
+    existing = str(payload.get("name_zh") or "").strip()
+    if existing:
+        payload["name_zh"] = existing
+        return existing
+    title = str(payload.get("title") or "").strip()
+    if not title:
+        raise RuntimeError("cannot generate name_zh without a product title")
+    translated = translate_title_zh(config, title)
+    if not translated:
+        raise RuntimeError(
+            "name_zh is empty and automatic Chinese name generation failed; "
+            "provide a Chinese product name manually"
+        )
+    payload["name_zh"] = translated
+    return translated
+
+
 def feishu_signature(secret: str, timestamp: str) -> str:
     string_to_sign = f"{timestamp}\n{secret}"
     digest = hmac.new(
@@ -2376,6 +2405,10 @@ def parser() -> argparse.ArgumentParser:
     sku.add_argument("--series", default="")
     sku.add_argument("--prefix", default="")
 
+    translate_name = sub.add_parser("translate-name")
+    translate_name.add_argument("--title", required=True)
+    translate_name.add_argument("--output", default="")
+
     ai_cover = sub.add_parser("edit-product-cover")
     ai_cover.add_argument("--image", required=True)
     ai_cover.add_argument("--output", default="")
@@ -2589,6 +2622,11 @@ def main() -> int:
                 return 2
 
             payload = {key: value for key, value in preview["payload"].items() if key in PRODUCT_FIELDS}
+            try:
+                ensure_product_name_zh(config, payload)
+            except RuntimeError as exc:
+                output_json({"ok": False, "errors": [str(exc)]})
+                return 2
             exact_duplicate_check(client, payload)
             category_ids = resolve_category_ids(draft, client.categories())
             prepared_assets = {
@@ -2798,6 +2836,11 @@ def main() -> int:
             if errors:
                 output_json({"ok": False, "errors": errors})
                 return 2
+            try:
+                ensure_product_name_zh(config, merged)
+            except RuntimeError as exc:
+                output_json({"ok": False, "errors": [str(exc)]})
+                return 2
             upload_warnings: list[str] = []
             uploaded: list[dict[str, Any]] = []
             if image_paths:
@@ -2987,6 +3030,12 @@ def main() -> int:
             )
             output_json(result)
             return 0
+
+        if args.command == "translate-name":
+            name_zh = translate_title_zh(config, args.title)
+            result = {"ok": bool(name_zh), "name_zh": name_zh}
+            output_json(result, args.output)
+            return 0 if name_zh else 2
 
         raise ValueError(f"unsupported command: {args.command}")
     except ApiError as exc:
