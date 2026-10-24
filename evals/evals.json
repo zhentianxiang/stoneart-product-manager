@@ -38,6 +38,12 @@
       "prompt": "使用 $stoneart-product-manager 创建一个白色大理石天使墓碑产品，并补充用于网站中文搜索的中文产品名。先给我 dry-run。",
       "expected_output": "The draft includes a concise Simplified Chinese name_zh consistent with the English title, preserves any SKU or product code, and appears in the preview payload and changed fields. A missing name_zh is reported in dry-run and is never silently lost.",
       "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "使用 $stoneart-product-manager 上架这个产品，尺寸为高120厘米、宽60厘米、长80厘米，重量约500kg，价格为1650美元。先给我 dry-run。",
+      "expected_output": "The preview keeps dimensions in size, stores Approx. 500 kg in the dedicated weight field, never appends weight to size, shows the Weight row in the product specification plan, and preserves the supplied price without inventing additional facts.",
+      "files": []
     }
   ]
 }

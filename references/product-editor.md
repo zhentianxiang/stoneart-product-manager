@@ -104,6 +104,17 @@ Avoid:
 
 If the English title changes materially, re-check `name_zh` for accuracy. Preserve a manually edited Chinese name unless the edit makes it inconsistent with the new title.
 
+### Specification fields
+
+Keep the structured specifications separate so the product page can render them consistently:
+
+- `size`: dimensions only, with units and axis labels such as `H 120 × W 60 × L 80 cm`.
+- `material`: the supplied material or finish, such as `Grade A white marble`.
+- `weight`: the supplied weight with units, such as `Approx. 500 kg`.
+- `price`: the supplied price and currency, such as `USD 1,650`.
+
+Do not append weight to `size`. If weight is unknown, leave `weight` empty and do not estimate it from a photograph.
+
 ## 4. Body Structure
 
 ### Opening paragraph
@@ -280,4 +291,5 @@ The AI-processed cover alt text should describe the sculpture in its new environ
 - Alt text describes each visible image.
 - SEO title and meta description are concise.
 - `name_zh` exists, is natural Simplified Chinese, and matches the English product title.
+- `weight` is stored in its own field when known and is not mixed into `size`.
 - Status matches the user's explicit request.

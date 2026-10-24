@@ -88,6 +88,7 @@ Save to `work/<slug>/observation.json`:
     "sku": "",
     "size": "",
     "material": "",
+    "weight": "",
     "price": ""
   },
   "unknowns": [

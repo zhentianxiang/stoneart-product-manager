@@ -222,12 +222,15 @@ Optional factual fields:
 - `sku`
 - `size`
 - `material`
+- `weight`
 - `price`
 - `sort_order`
 - `category_ids`
 - `image_alts`
 
 `sku` may be omitted when automatic numbering is enabled. Category selection is still reviewed by Codex, but the resulting category IDs are validated against the live taxonomy.
+
+Store weight in the dedicated `weight` field, not inside `size`. Preserve the user's wording and units, such as `Approx. 500 kg` or `1,200 lb`. If weight is unknown, leave it blank and add a warning instead of inventing a value.
 
 Write `name_zh` as a concise, natural Simplified Chinese product name for the website's Chinese search. Preserve the subject, material, sculpture type, finish, and any supplied SKU or product code. Do not invent facts. If the draft omits it, generate one with:
 
@@ -344,7 +347,7 @@ python scripts/stoneart_products.py prepare-image \
 python scripts/stoneart_products.py verify-product --id <product-id>
 ```
 
-Verify title, `name_zh`, slug, status, category IDs, cover image, gallery, SEO fields, and public HTTP status. Fetch the saved product again before reporting success.
+Verify title, `name_zh`, slug, status, category IDs, size, material, weight, cover image, gallery, SEO fields, and public HTTP status. Fetch the saved product again before reporting success.
 
 If the public slug changed, also verify the permanent redirect from the old URL:
 
@@ -403,6 +406,8 @@ The command displays a dry-run diff. Add `--apply` after reviewing it. Use `--re
 
 When updating a product that has no `name_zh`, add one to the patch or let `--apply` generate it from the final English title. If the English title changes materially, review and update `name_zh` instead of leaving a stale translation.
 
+If the user supplies weight for an existing product, put it in the `weight` field and show the change in the dry-run diff. Do not copy weight into `size`.
+
 Body image placeholders such as `{{product_image:1}}` are resolved after the final gallery is known. With `--replace-gallery`, image 1 is the first new upload; without it, numbering starts from the existing gallery and continues into the new uploads. The command rejects a placeholder that exceeds the final gallery count or that is placed inside an existing `<figure>`.
 
 If the saved product is published and fields actually changed, the update command also triggers the Local KB website sync.
@@ -441,7 +446,7 @@ Successful publication triggers the Local KB website sync. The result is returne
 - Keep product titles descriptive, specific, and free of unsupported superlatives.
 - Prefer 4-6 useful H2 sections over a wall of generic copy.
 - Explain material, finish, placement, customization, packing, and ordering in buyer language.
-- Do not invent prices, dimensions, SKU numbers, production times, customer stories, certifications, or material grades.
+- Do not invent prices, dimensions, weight, SKU numbers, production times, customer stories, certifications, or material grades.
 - Use `Contact for quotation` only when the user accepts a quote-based price.
 - Add internal links when they help the buyer compare categories, materials, projects, or services.
 - Use descriptive image alt text rather than keyword lists.

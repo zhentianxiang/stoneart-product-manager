@@ -76,6 +76,7 @@ body_html
 body_markdown
 size
 material
+weight
 price
 cover_image
 seo_title
@@ -87,6 +88,8 @@ category_ids
 ```
 
 `name_zh` is a Simplified Chinese product name used by the website's Chinese search. It is separate from the English `title`; preserve SKU/product codes when translating.
+
+`weight` is a separate specification field rendered as the product page's `Weight` row. Store the supplied value and units there, not inside `size`. An empty weight is omitted from the public specification table.
 
 `title` and `slug` are required. `status` must be `draft` or `published`.
 

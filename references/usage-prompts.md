@@ -35,6 +35,7 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 - 查询相近产品，避免标题和链接完全重复
 - 写英文产品标题、摘要、正文、SEO 标题和 meta description
 - 同时写 `name_zh` 简体中文产品名，用于网站中文搜索；保留标题中的 SKU/产品编号
+- 用户提供重量时写入独立的 `weight` 字段，不要混进 `size`；没有提供就留空
 - 正文不要 H1，只使用 H2/H3
 - 尺寸、价格、SKU、材质等级不确定就不要编造
 - 先给我完整 dry-run 和图片顺序
@@ -97,6 +98,7 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 - 如果当前产品缺少 `name_zh`，按最终英文标题补充中文产品名
 - 如果英文标题变化较大，重新检查中文名是否仍然准确
 - 如果增加图片，判断应该追加还是替换 gallery
+- 如果补充重量，写入 `weight` 字段并在 dry-run diff 中显示
 - 如果修改已发布产品的 slug，记录旧 URL，并在部署后验证旧地址永久 301 到新地址
 - 更新站内仍指向旧产品 URL 的内部链接
 - 先显示字段 diff 和图片顺序

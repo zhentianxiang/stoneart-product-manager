@@ -51,6 +51,7 @@ PRODUCT_FIELDS = [
     "body_markdown",
     "size",
     "material",
+    "weight",
     "price",
     "cover_image",
     "seo_title",
@@ -536,6 +537,8 @@ def validate_product(
         warnings.append("Size is empty; do not invent dimensions")
     if not payload.get("material"):
         warnings.append("Material is empty; confirm it before making a material claim")
+    if not str(payload.get("weight") or "").strip():
+        warnings.append("Weight is empty; provide it only when known and never invent it")
     return errors, warnings
 
 
@@ -1497,6 +1500,7 @@ def product_summary(item: dict[str, Any]) -> dict[str, Any]:
             "excerpt",
             "size",
             "material",
+            "weight",
             "price",
             "status",
             "cover_image",
@@ -1551,7 +1555,7 @@ def draft_product(
         "similar_products": similar_products(client, observation),
         "required_output": (
             "Return one JSON object with title, name_zh, slug, excerpt, body_markdown, seo_title, "
-            "seo_description, status='draft', sku, size, material, price, category_ids, "
+            "seo_description, status='draft', sku, size, material, weight, price, category_ids, "
             "image_alts, missing_information, and claims_to_verify. Use only enabled "
             "category IDs from the supplied list. Do not include an H1 in body_markdown. "
             "Write name_zh as a concise, natural Simplified Chinese product name for "
