@@ -1,12 +1,71 @@
 ---
 name: stoneart-product-manager
 description: End-to-end creation and publishing of Stone Art Sculpture products from a product image or reference photo. Use this skill whenever the user sends a sculpture, statue, fountain, planter, bench, fireplace, gazebo, bust, relief, or other product image and asks to identify it, write its product page, create a draft, add it to the company website, upload its gallery images, set its category, optimize it for Google SEO, add or configure product-image watermarks, add or update a Simplified Chinese product name (`name_zh`) for Chinese website search, synchronize published products into the Local KB, update an existing product, or 上架/发布/新建公司产品. Also use it for near-miss requests such as “把这个图片放到产品里”, “根据图片写一个产品”, “上架这个雕塑”, “给产品图片加水印”, “补充中文产品名”, “发布后同步知识库”, or when the user wants ready-to-copy product-listing prompts, even if they do not name this skill.
-compatibility: Requires Python 3.10+, network access, requests, and Pillow. Image understanding uses current Codex vision first, local Qwen3-VL-30B-A3B-Instruct second, and DeepSeek last. Uses local Qwen-Image-2.1 for AI product covers with Aliyun Wan2.7 as fallback; dashscope is optional.
+compatibility: Requires Python 3.10+, network access, requests, and Pillow. Image understanding uses current Codex vision first, local Qwen3-VL-30B-A3B-Instruct second, and DeepSeek last. Uses local Qwen-Image-2.1 for AI product covers with Aliyun Wan2.7 as fallback; dashscope is optional. On Windows, prefer Git Bash for all shell commands and use PowerShell only as the final fallback.
 ---
 
 # Stone Art Product Manager
 
 Create production-ready Stone Art Sculpture products from images, including image understanding, category selection, product copy, SEO fields, media upload, gallery creation, publication, verification, and Feishu notification.
+
+## Windows Shell Policy
+
+When the operating system is Windows or the working paths use Windows drive
+letters, use this order for every shell operation:
+
+1. Prefer Git Bash, with Bash syntax and `/c/...` paths.
+2. Use `python` from the active environment; if it is unavailable, try `py -3`.
+3. If `bash` is not on `PATH`, try `C:\Program Files\Git\bin\bash.exe` before
+   deciding Git Bash is unavailable.
+4. Use PowerShell only when Git Bash is not installed, cannot start, or cannot run
+   the required command. Do not silently switch to `cmd.exe`.
+5. Once PowerShell is required, use PowerShell-native syntax and `C:\...` paths.
+   Never mix Bash built-ins such as `export`, `mkdir -p`, `cp`, or `chmod` into it.
+
+Git Bash verification:
+
+```bash
+cd "/c/path/to/stoneart-product-manager"
+python --version
+python scripts/stoneart_products.py check
+```
+
+PowerShell fallback only:
+
+```powershell
+Set-Location "C:\path\to\stoneart-product-manager"
+$env:PYTHONUTF8 = "1"
+py -3 .\scripts\stoneart_products.py check
+```
+
+If `bash` is not on `PATH`, invoke Git Bash by its usual absolute path first:
+
+```powershell
+& "C:\Program Files\Git\bin\bash.exe" -lc 'cd "/c/path/to/stoneart-product-manager" && python scripts/stoneart_products.py check'
+```
+
+Git Bash environment override:
+
+```bash
+IMAGE_EDIT_OUTPUT_WIDTH=1200 IMAGE_EDIT_OUTPUT_HEIGHT=900 \
+  python scripts/stoneart_products.py --help
+```
+
+PowerShell environment override:
+
+```powershell
+$env:IMAGE_EDIT_OUTPUT_WIDTH = "1200"
+$env:IMAGE_EDIT_OUTPUT_HEIGHT = "900"
+py -3 .\scripts\stoneart_products.py --help
+```
+
+If `config.local.env` is absent in PowerShell, create it and restrict access:
+
+```powershell
+Copy-Item .\config.example.env .\config.local.env
+$identity = "$env:USERDOMAIN\$env:USERNAME"
+icacls .\config.local.env /inheritance:r /grant:r "${identity}:(R,W)"
+```
 
 ## Configuration
 
@@ -15,6 +74,7 @@ Read credentials from `config.local.env` in this skill directory. Environment va
 If `config.local.env` is absent:
 
 ```bash
+# Git Bash, macOS, or Linux
 cp config.example.env config.local.env
 chmod 600 config.local.env
 ```
@@ -22,6 +82,7 @@ chmod 600 config.local.env
 Run a read-only configuration check:
 
 ```bash
+# Git Bash, macOS, or Linux
 cd <skill-directory>
 python scripts/stoneart_products.py check
 ```
@@ -61,9 +122,19 @@ PRODUCT_COVER_AI_SIZE=2K
 PRODUCT_COVER_AI_PROMPT=请移除所有水印和覆盖文字；保留雕塑主体，不得变形或重绘。...
 PRODUCT_IMAGE_MAX_BYTES=1048576
 PRODUCT_IMAGE_JPEG_QUALITY=90
+IMAGE_EDIT_OUTPUT_WIDTH=1024
+IMAGE_EDIT_OUTPUT_HEIGHT=1024
+IMAGE_EDIT_FIT=cover
 ```
 
 The selected product cover is edited by the local Qwen-Image-2.1 service first. If that service is unhealthy, times out, or returns no image, the same prompt automatically retries through Wan2.7. DeepSeek is not used for background replacement.
+
+Every AI-edited product cover is normalized to the configured final canvas size;
+the default is exactly `1024 × 1024`. `cover` preserves proportions and center-crops
+to fill the canvas, while `contain` preserves the complete subject and pads the
+remaining area. If the edit already has the exact target size, it is not resized or
+re-encoded again. The requested model size (`PRODUCT_COVER_AI_SIZE`) remains separate
+from this final file specification.
 
 Product watermark configuration:
 
@@ -230,6 +301,12 @@ Optional factual fields:
 
 `sku` may be omitted when automatic numbering is enabled. Category selection is still reviewed by Codex, but the resulting category IDs are validated against the live taxonomy.
 
+Complete product drafts must include a `## Frequently Asked Questions` section with
+at least three useful H3 questions. When two or more images are available, place
+`{{product_image:2}}` after the most relevant detail, design, material, or
+craftsmanship section. The draft and create commands repair these omissions
+automatically without duplicating an existing FAQ or image.
+
 Store weight in the dedicated `weight` field, not inside `size`. Preserve the user's wording and units, such as `Approx. 500 kg` or `1,200 lb`. If weight is unknown, leave it blank and add a warning instead of inventing a value.
 
 Write `name_zh` as a concise, natural Simplified Chinese product name for the website's Chinese search. Preserve the subject, material, sculpture type, finish, and any supplied SKU or product code. Do not invent facts. If the draft omits it, generate one with:
@@ -295,7 +372,7 @@ Before upload, the CLI:
 1. Compresses images larger than `PRODUCT_IMAGE_MAX_BYTES`.
 2. Sends only the selected hero image to local Qwen-Image-2.1, with Wan2.7 fallback.
 3. Removes watermarks/overlay text and replaces the full background using `PRODUCT_COVER_AI_PROMPT`.
-4. Restores the generated image to the source dimensions.
+4. Normalizes the generated image to `IMAGE_EDIT_OUTPUT_WIDTH × IMAGE_EDIT_OUTPUT_HEIGHT`.
 5. Compresses the generated image if needed.
 6. Adds the configured watermark to every final upload image when enabled.
 7. Recompresses a watermarked image if it exceeds the upload limit.
@@ -454,6 +531,7 @@ Successful publication triggers the Local KB website sync. The result is returne
 ## Image Rules
 
 - AI-process the selected cover for every new product unless the user explicitly disables it.
+- Normalize every AI-edited cover to the configured final canvas size; never stretch the sculpture.
 - The cover prompt removes watermarks and overlay text and replaces the entire outdoor background.
 - Preserve the sculpture subject, proportions, material appearance, pose, and visible details.
 - Keep the generated cover as gallery image 1.

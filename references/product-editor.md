@@ -31,9 +31,11 @@ Recommended body sections:
 4. Placement and applications
 5. Customization and ordering
 6. Packing and delivery
-7. FAQ when real buyer questions remain
+7. Frequently Asked Questions, with at least three genuinely useful H3 questions
 
-Do not force every section when the image or facts do not support it.
+Do not force a section when the image or facts do not support it. Every complete
+product body must still include a factual FAQ and an inline detail image when at
+least two product images are available.
 
 ## 2. Title Strategy
 
@@ -123,7 +125,10 @@ Answer what the product is and where it is used within the first 2-3 sentences. 
 
 ### In-body product images
 
-The product gallery is managed separately from the article body. Add an image into `body_markdown` only when it supports a specific section, detail, material point, or application.
+The product gallery is managed separately from the article body. For a complete
+product page with at least two images, include image 2 on its own line after the
+most relevant design, detail, material, or craftsmanship section. It should support
+that section rather than interrupt the opening paragraph.
 
 Use placeholders rather than inventing media URLs:
 
@@ -140,6 +145,9 @@ Final gallery order is:
 2. Remaining original images in reviewed order
 
 The create and update commands replace each placeholder with the final uploaded image URL. For updates, confirm the numbering against the gallery that results from the merge or `--replace-gallery` operation.
+
+If the generated draft omits this image, the CLI inserts `{{product_image:2}}` near
+the end of the first relevant H2 section. It never duplicates an existing body image.
 
 ### Design and visible details
 
@@ -191,6 +199,14 @@ Explain what can be customized without inventing lead times or prices:
 ### Packing and delivery
 
 Describe known workshop practice conservatively: protective packing, reinforced crates, and export shipping coordination. Do not invent delivery days or guarantees.
+
+### Frequently Asked Questions
+
+End every complete product body with one `## Frequently Asked Questions` section.
+Use at least three H3 questions. The default set should cover customization,
+confirmation of dimensions/weight/delivery details, and how to request a quote.
+Do not state unknown specifications, prices, or lead times. If the model omits the
+section, the CLI appends this safe, factual default FAQ automatically.
 
 ## 5. Factual Discipline
 
@@ -284,6 +300,8 @@ The AI-processed cover alt text should describe the sculpture in its new environ
 - Excerpt is buyer-useful and not keyword-stuffed.
 - Body has no H1.
 - H2 and H3 hierarchy is logical.
+- A complete FAQ section contains at least three useful H3 questions.
+- Multi-image products include a detail image in a relevant body section.
 - Facts match the user's input and visible evidence.
 - Category IDs are valid and enabled.
 - Cover image is the strongest clear view.

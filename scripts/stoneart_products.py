@@ -38,7 +38,23 @@ DEFAULT_COVER_PROMPT = (
     "大理石人物可使用优雅欧洲庭院或艺术展馆花园；喷泉、花盆、长椅可使用"
     "高级园林庭院或酒店花园；动物、抽象和金属雕塑可使用现代景观公园或"
     "极简建筑庭院。保持真实光影、地面接触和柔和投影，不添加文字、Logo、"
-    "人物或无关物体，不改变图片尺寸。"
+    "人物或无关物体。构图保持正方形，主体完整并留有安全边距。"
+)
+
+DEFAULT_IMAGE_EDIT_WIDTH = 1024
+DEFAULT_IMAGE_EDIT_HEIGHT = 1024
+FAQ_HEADING_RE = re.compile(
+    r"(?im)^\s*##\s+(?:frequently asked questions|faq)\s*$"
+)
+FAQ_HTML_HEADING_RE = re.compile(
+    r"<h2\b[^>]*>\s*(?:frequently asked questions|faq)\s*</h2>", re.I
+)
+PRODUCT_IMAGE_PLACEHOLDER_RE = re.compile(
+    r"\{\{product_image(?::|_)(\d+)\}\}", re.I
+)
+FAQ_THEME_RE = re.compile(
+    r"(?i)\b(?:overview|design|details?|craft|materials?|features?|"
+    r"construction|finish(?:es)?|form)\b"
 )
 
 PRODUCT_FIELDS = [
@@ -158,6 +174,7 @@ def load_config(path: Path = DEFAULT_CONFIG) -> dict[str, str]:
                 "FEISHU_",
                 "LOCAL_IMAGE_",
                 "LOCAL_VISION_",
+                "IMAGE_EDIT_",
             )
         ):
             values[key] = value
@@ -389,6 +406,133 @@ def sanitize_body_markdown(body: str) -> tuple[str, list[str]]:
     if re.search(r"(?m)^\s*#\s+", remaining):
         raise ValueError("body_markdown may contain only H2 and lower headings")
     return remaining.strip(), warnings
+
+
+def config_flag(config: dict[str, str], key: str, default: bool = True) -> bool:
+    value = config.get(key)
+    if value is None:
+        return default
+    return str(value).strip().lower() not in {"0", "false", "no", "off"}
+
+
+def default_faq_markdown() -> str:
+    return (
+        "## Frequently Asked Questions\n\n"
+        "### Can this sculpture be customized?\n\n"
+        "Custom dimensions, materials, finishes, and base details can be discussed "
+        "with the Stone Art Sculpture team before production. Final options depend "
+        "on the selected design and project requirements.\n\n"
+        "### How do I confirm dimensions, weight, and delivery details?\n\n"
+        "The final specifications depend on the approved design, material, and size. "
+        "Share your project requirements to receive confirmation before placing an order.\n\n"
+        "### How can I request a quote?\n\n"
+        "Send the product name, required dimensions, preferred material or finish, "
+        "delivery location, and target date to request a project-specific quotation."
+    )
+
+
+def default_faq_html() -> str:
+    return (
+        "<h2>Frequently Asked Questions</h2>"
+        "<h3>Can this sculpture be customized?</h3>"
+        "<p>Custom dimensions, materials, finishes, and base details can be discussed "
+        "with the Stone Art Sculpture team before production. Final options depend "
+        "on the selected design and project requirements.</p>"
+        "<h3>How do I confirm dimensions, weight, and delivery details?</h3>"
+        "<p>The final specifications depend on the approved design, material, and size. "
+        "Share your project requirements to receive confirmation before placing an order.</p>"
+        "<h3>How can I request a quote?</h3>"
+        "<p>Send the product name, required dimensions, preferred material or finish, "
+        "delivery location, and target date to request a project-specific quotation.</p>"
+    )
+
+
+def insert_markdown_image_in_relevant_section(body: str, image_index: int) -> str:
+    placeholder = f"{{{{product_image:{image_index}}}}}"
+    if PRODUCT_IMAGE_PLACEHOLDER_RE.search(body):
+        return body
+
+    lines = body.splitlines()
+    h2_positions = [
+        index for index, line in enumerate(lines) if re.match(r"^\s*##\s+", line)
+    ]
+    insert_at = len(lines)
+    if h2_positions:
+        target = next(
+            (
+                position
+                for position in h2_positions
+                if not FAQ_HEADING_RE.match(lines[position])
+                and FAQ_THEME_RE.search(lines[position])
+            ),
+            next(
+                (
+                    position
+                    for position in h2_positions
+                    if not FAQ_HEADING_RE.match(lines[position])
+                ),
+                None,
+            ),
+        )
+        if target is not None:
+            next_h2 = next(
+                (position for position in h2_positions if position > target),
+                len(lines),
+            )
+            insert_at = next_h2
+    else:
+        paragraphs = list(re.finditer(r"(?s)(?:^|\n\s*\n).+?(?=\n\s*\n|$)", body))
+        if len(paragraphs) > 1:
+            insert_at = body[: paragraphs[1].start()].count("\n") + 1
+
+    while insert_at > 0 and not lines[insert_at - 1].strip():
+        insert_at -= 1
+    before = "\n".join(lines[:insert_at]).rstrip()
+    after = "\n".join(lines[insert_at:]).lstrip()
+    return "\n\n".join(part for part in (before, placeholder, after) if part)
+
+
+def ensure_product_body_quality(
+    payload: dict[str, Any],
+    config: dict[str, str],
+    *,
+    image_count: int | None = None,
+) -> list[str]:
+    warnings: list[str] = []
+    body_markdown = str(payload.get("body_markdown") or "")
+    body_html = str(payload.get("body_html") or "")
+    if (
+        config_flag(config, "PRODUCT_AUTO_INSERT_BODY_IMAGE", True)
+        and image_count is not None
+        and image_count >= 2
+        and body_markdown
+        and not PRODUCT_IMAGE_PLACEHOLDER_RE.search(body_markdown)
+    ):
+        payload["body_markdown"] = insert_markdown_image_in_relevant_section(
+            body_markdown, 2
+        )
+        body_markdown = payload["body_markdown"]
+        warnings.append(
+            "Inserted the first gallery detail image ({{product_image:2}}) into "
+            "the most relevant product body section."
+        )
+
+    if not config_flag(config, "PRODUCT_REQUIRE_FAQ", True):
+        return warnings
+    if body_markdown and not FAQ_HEADING_RE.search(body_markdown):
+        payload["body_markdown"] = (
+            body_markdown.rstrip() + "\n\n" + default_faq_markdown()
+        )
+        warnings.append(
+            "Added a factual FAQ section with customization, specification, and quote guidance."
+        )
+    elif body_html and not body_markdown and not FAQ_HTML_HEADING_RE.search(body_html):
+        payload["body_html"] = body_html.rstrip() + default_faq_html()
+        body_html = payload["body_html"]
+        warnings.append(
+            "Added a factual FAQ section with customization, specification, and quote guidance."
+        )
+    return warnings
 
 
 def category_index(categories: list[dict[str, Any]]) -> tuple[dict[int, dict[str, Any]], dict[str, dict[str, Any]]]:
@@ -1111,6 +1255,96 @@ def collect_image_urls(value: Any) -> list[str]:
 LOCAL_SIZE_RE = re.compile(r"^\d{3,4}x\d{3,4}$")
 
 
+def image_edit_output_size(config: dict[str, str]) -> tuple[int, int]:
+    values: list[int] = []
+    for key, default in (
+        ("IMAGE_EDIT_OUTPUT_WIDTH", DEFAULT_IMAGE_EDIT_WIDTH),
+        ("IMAGE_EDIT_OUTPUT_HEIGHT", DEFAULT_IMAGE_EDIT_HEIGHT),
+    ):
+        raw = str(config.get(key, default)).strip()
+        try:
+            value = int(raw)
+        except ValueError as exc:
+            raise ValueError(f"{key} must be an integer, got {raw!r}") from exc
+        if value < 64 or value > 8192:
+            raise ValueError(f"{key} must be between 64 and 8192, got {value}")
+        values.append(value)
+    return values[0], values[1]
+
+
+def image_edit_fit(config: dict[str, str]) -> str:
+    fit = str(config.get("IMAGE_EDIT_FIT", "cover")).strip().lower()
+    if fit not in {"cover", "contain"}:
+        raise ValueError("IMAGE_EDIT_FIT must be 'cover' or 'contain'")
+    return fit
+
+
+def image_edit_prompt(prompt: str, config: dict[str, str]) -> str:
+    width, height = image_edit_output_size(config)
+    fit = image_edit_fit(config)
+    framing = (
+        f"Final file requirement: the finished image will be normalized to exactly "
+        f"{width} x {height} pixels ({'square' if width == height else 'fixed'}). "
+        "Compose a single edited image for that final canvas. "
+        "Keep the sculpture complete, undistorted, and inside the frame with safe "
+        "margins. Do not stretch the subject or change its proportions. "
+        if fit == "cover"
+        else f"Final file requirement: the finished image will be normalized to "
+        f"{width} x {height} pixels. Compose the complete sculpture for that canvas. "
+        "Preserve its proportions, add no invented details, and leave neutral space "
+        "only where needed. "
+    )
+    return f"{prompt.strip()}\n\n{framing}".strip()
+
+
+def normalize_edited_image(path: Path, config: dict[str, str]) -> dict[str, Any]:
+    try:
+        from PIL import Image, ImageOps
+    except ImportError as exc:
+        raise RuntimeError("Pillow is required; install requirements.txt") from exc
+
+    target_size = image_edit_output_size(config)
+    fit = image_edit_fit(config)
+    with Image.open(path) as source:
+        image = ImageOps.exif_transpose(source).convert("RGB")
+        original_size = image.size
+        if original_size == target_size:
+            return {
+                "original_size": list(original_size),
+                "output_size": list(original_size),
+                "target_size": list(target_size),
+                "adjusted": False,
+                "fit": fit,
+            }
+        if fit == "cover":
+            normalized = ImageOps.fit(
+                image,
+                target_size,
+                method=Image.Resampling.LANCZOS,
+                centering=(0.5, 0.5),
+            )
+        else:
+            normalized = ImageOps.pad(
+                image,
+                target_size,
+                method=Image.Resampling.LANCZOS,
+                color=(245, 245, 245),
+                centering=(0.5, 0.5),
+            )
+    save_format = "PNG" if path.suffix.lower() == ".png" else "JPEG"
+    save_options: dict[str, Any] = {"optimize": True}
+    if save_format == "JPEG":
+        save_options.update(quality=95, progressive=True)
+    normalized.save(path, format=save_format, **save_options)
+    return {
+        "original_size": list(original_size),
+        "output_size": list(target_size),
+        "target_size": list(target_size),
+        "adjusted": True,
+        "fit": fit,
+    }
+
+
 def local_image_enabled(config: dict[str, str]) -> bool:
     return str(config.get("LOCAL_IMAGE_ENABLED", "true")).strip().lower() not in {
         "0",
@@ -1399,6 +1633,7 @@ def edit_product_cover(
 
     prompt = prompt.strip() or config.get("PRODUCT_COVER_AI_PROMPT", "").strip()
     prompt = prompt or DEFAULT_COVER_PROMPT
+    prompt = image_edit_prompt(prompt, config)
     size = size.strip() or config.get("PRODUCT_COVER_AI_SIZE", "2K")
     output_path = output_path or (
         Path.cwd()
@@ -1418,16 +1653,7 @@ def edit_product_cover(
     remote = requests.get(remote_url, timeout=180)
     remote.raise_for_status()
     output_path.write_bytes(remote.content)
-    with Image.open(output_path) as result:
-        image = ImageOps.exif_transpose(result).convert("RGB")
-        if image.size != original_size:
-            image = ImageOps.fit(
-                image,
-                original_size,
-                method=Image.Resampling.LANCZOS,
-                centering=(0.5, 0.5),
-            )
-        image.save(output_path, format="JPEG", quality=95, optimize=True)
+    image_transform = normalize_edited_image(output_path, config)
 
     compression = compress_image(
         output_path,
@@ -1442,7 +1668,9 @@ def edit_product_cover(
         "engine": edit["engine"],
         "provider": edit["provider"],
         "attempts": edit["attempts"],
-        "size": list(original_size),
+        "size": image_transform["output_size"],
+        "input_size": list(original_size),
+        "image_transform": image_transform,
         "prompt": prompt,
         "compression": compression,
     }
@@ -1564,7 +1792,14 @@ def draft_product(
             "If an image should appear inside the body, insert a placeholder such as "
             "{{product_image:1}} or {{product_image:2}} instead of inventing a URL. "
             "Placeholder numbers refer to the final gallery order: image 1 is the "
-            "AI-processed cover, followed by the remaining original images."
+            "AI-processed cover, followed by the remaining original images. "
+            "For two or more images, place {{product_image:2}} on its own line "
+            "after the most relevant design, detail, material, or craftsmanship "
+            "section. Every complete product body must end with a useful "
+            "'## Frequently Asked Questions' section containing at least three H3 "
+            "questions and concise answers. Use only supported facts; when exact "
+            "dimensions, price, or lead time are unknown, answer with the safe "
+            "quotation or confirmation process instead of inventing values."
         ),
     }
     system = PRODUCT_REFERENCE.read_text(encoding="utf-8")
@@ -1592,6 +1827,9 @@ def draft_product(
         str(by_id[category_id].get("_path") or "")
         for category_id in result["category_ids"]
     ]
+    ensure_product_body_quality(
+        result, config, image_count=len(observation.get("images") or [])
+    )
     result["generated_by"] = "deepseek"
     return result
 
@@ -1628,6 +1866,11 @@ def build_create_preview(
     watermark: bool = False,
 ) -> dict[str, Any]:
     payload, warnings = merge_defaults(draft, config)
+    warnings.extend(
+        ensure_product_body_quality(
+            payload, config, image_count=len(image_paths)
+        )
+    )
     if publish:
         payload["status"] = "published"
     auto_series = config.get("PRODUCT_AUTO_SKU_SERIES", "").strip()
@@ -2747,6 +2990,14 @@ def main() -> int:
             merged["category_ids"] = category_ids
             image_paths = [Path(value).expanduser() for value in args.image]
             merged, default_warnings = merge_defaults(merged, config)
+            if any(key in patch for key in ("body_markdown", "body_html")):
+                default_warnings.extend(
+                    ensure_product_body_quality(
+                        merged,
+                        config,
+                        image_count=len(current.get("images") or []) + len(image_paths),
+                    )
+                )
             pending_info = [
                 {**image_info(path), "will_watermark": apply_watermark}
                 for path in image_paths

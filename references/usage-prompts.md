@@ -22,12 +22,24 @@ Show this guide when the user asks:
 
 Keep the menu short and ask which workflow to start. Do not touch the production API.
 
+## Windows execution rule for every prompt
+
+When the user's environment is Windows, every runnable instruction produced by
+this skill must say:
+
+```text
+Windows 下所有 shell 命令优先使用 Git Bash；只有 Git Bash 未安装、无法启动或
+无法执行该命令时，才使用 PowerShell。不要使用 cmd.exe。切到 PowerShell 后必须
+改用 PowerShell 原生语法、Windows 路径和 $env:变量写法。
+```
+
 ## 2. New Product from One Image
 
 ```text
 使用 $stoneart-product-manager，把这张图片里的产品上架到公司产品。
 
 要求：
+- 运行环境：如果当前是 Windows，所有 shell 命令优先使用 Git Bash；仅 Git Bash 不存在或命令不可用时才使用 PowerShell，不要使用 cmd.exe
 - 先用当前 Codex 对话的识图能力分析图片；只有 Codex 无法可靠识图时才调用本地 Qwen3-VL，最后才回退 DeepSeek
 - 识别产品主体、可见材质、风格、细节、使用场景和图片中有没有水印
 - 查询现有产品分类并选择最准确的叶子分类
@@ -37,6 +49,7 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 - 同时写 `name_zh` 简体中文产品名，用于网站中文搜索；保留标题中的 SKU/产品编号
 - 用户提供重量时写入独立的 `weight` 字段，不要混进 `size`；没有提供就留空
 - 正文不要 H1，只使用 H2/H3
+- 正文末尾必须有 `## Frequently Asked Questions`，至少包含 3 个 H3 问题和真实、保守的回答
 - 尺寸、价格、SKU、材质等级不确定就不要编造
 - 先给我完整 dry-run 和图片顺序
 - 我确认后再上传图片并发布
@@ -48,6 +61,7 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 使用 $stoneart-product-manager，根据这组图片创建一个公司产品。
 
 请把这些图片当作同一产品的一组素材：
+- 运行环境：如果当前是 Windows，所有 shell 命令优先使用 Git Bash；仅 Git Bash 不存在或命令不可用时才使用 PowerShell，不要使用 cmd.exe
 - 自动判断主图、侧面图、细节图、底座图、场景图
 - 把最有代表性、主体最清楚的正面图片作为封面
 - 只把这张封面图交给本地 Qwen-Image-2.1（失败再回退阿里云百炼），移除水印/覆盖文字并完全替换户外背景
@@ -59,6 +73,7 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 - 如果有水印、电话、网址、供应商 Logo，先指出位置，不要直接当最终上架图
 - 根据真实可见内容写产品文案，不要靠图片猜尺寸和价格
 - 产品正文需要插图时使用 {{product_image:1}}、{{product_image:2}} 等占位符；新建和更新产品都会在上传后替换为正式图片地址
+- 有多张图时，把第一张详情图（`{{product_image:2}}`）放在设计、细节、材质或工艺章节末尾，不要只依赖顶部 gallery
 - 选择正确分类，先 dry-run，不要写线上
 ```
 
@@ -66,6 +81,8 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 
 ```text
 使用 $stoneart-product-manager，根据这张图片创建产品草稿，不要发布。
+
+运行环境：Windows 下所有命令优先使用 Git Bash，仅 Git Bash 不可用时回退到 PowerShell；不要使用 cmd.exe。
 
 完成后返回：
 1. 产品标题和 slug
@@ -81,6 +98,8 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 ```text
 使用 $stoneart-product-manager 处理这张产品图。
 
+运行环境：Windows 下所有命令优先使用 Git Bash，仅 Git Bash 不可用时回退到 PowerShell；不要使用 cmd.exe。
+
 我只知道图片内容，没有准确尺寸、重量、SKU 和价格。请不要编造。
 把未知项留空，并在正文中使用“custom size available”“contact for quotation”
 这类真实可支持的表达。如果发布前必须补充事实，列出来让我确认。
@@ -91,6 +110,9 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 ```text
 使用 $stoneart-product-manager 更新这个产品：
 <产品 URL、slug 或产品 ID>
+
+运行环境：如果当前是 Windows，所有 shell 命令优先使用 Git Bash；仅 Git Bash
+不存在或命令不可用时才使用 PowerShell，不要使用 cmd.exe。
 
 先读取当前产品并备份。根据我补充的图片和说明：
 - 只修改我明确要求的字段
@@ -110,6 +132,8 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 ```text
 使用 $stoneart-product-manager 处理这批产品图片。
 
+运行环境：Windows 下所有命令优先使用 Git Bash，仅 Git Bash 不可用时回退到 PowerShell；不要使用 cmd.exe。
+
 先把图片按产品分组，不要一条命令直接全部发布。
 每个产品输出：
 - 建议标题和 slug
@@ -127,16 +151,20 @@ Keep the menu short and ask which workflow to start. Do not touch the production
 
 ```text
 使用 $stoneart-product-manager，把这个产品图上架，先预览。
+（Windows 下优先 Git Bash，仅不可用时回退 PowerShell，不使用 cmd.exe。）
 ```
 
 ```text
 使用 $stoneart-product-manager，根据图片写一个产品草稿，不要发布。
+（Windows 下优先 Git Bash，仅不可用时回退 PowerShell，不使用 cmd.exe。）
 ```
 
 ```text
 使用 $stoneart-product-manager，看看这个产品和网站现有产品有没有重复。
+（Windows 下优先 Git Bash，仅不可用时回退 PowerShell，不使用 cmd.exe。）
 ```
 
 ```text
 使用 $stoneart-product-manager，告诉我这个 skill 怎么用，先不要操作线上。
+（Windows 下优先 Git Bash，仅不可用时回退 PowerShell，不使用 cmd.exe。）
 ```

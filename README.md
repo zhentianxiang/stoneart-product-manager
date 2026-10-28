@@ -12,8 +12,11 @@ Codex skill for turning sculpture product photos into completed Stone Art Sculpt
 - Generate SEO-focused product copy without inventing facts
 - Generate a Simplified Chinese product name (`name_zh`) for Chinese website search
 - Preserve supplied product weight in the dedicated specification field
+- Always finish complete product bodies with a useful FAQ and repair omitted sections
+- Insert a relevant gallery detail image into multi-image product articles
 - Generate a structured draft with DeepSeek when helpful
 - Select one hero image and replace its full background with local Qwen-Image-2.1, falling back to Aliyun Wan2.7 when the local service is unavailable
+- Normalize every AI-edited image to a configurable final canvas, defaulting to 1024 × 1024
 - Remove watermark and overlay text from the AI cover
 - Keep the AI cover plus all remaining originals in a correctly sized gallery
 - Use uploaded gallery images inside product body content
@@ -44,6 +47,17 @@ Install dependencies:
 ```bash
 python3 -m pip install -r requirements.txt
 ```
+
+On Windows, use Git Bash first. From the skill directory:
+
+```bash
+python --version
+python -m pip install -r requirements.txt
+```
+
+If Git Bash is unavailable, run the same commands in PowerShell with
+`py -3 .\scripts\stoneart_products.py ...`. PowerShell is the final fallback;
+do not use `cmd.exe`.
 
 Create local configuration:
 
